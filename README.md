@@ -123,11 +123,11 @@ emb.score(e1, e2)
 # 🧪 Running Tests
 
 ```bash
-PYTHONPATH=. pytest -q
+pytest -q
 ```
 
 ---
 
 # License
 
-MIT
+Please contact author
