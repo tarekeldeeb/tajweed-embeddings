@@ -1,0 +1,625 @@
+{
+	"ء": {
+		"makhraj": "Aqsā al-Halq (deepest part of the throat)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"halqi",
+				"shadid",
+				"hams",
+				"tarqiq"
+			]
+		}
+	},
+	"ب": {
+		"makhraj": "Ash-Shafatan (both lips)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 1,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"shafawi",
+				"shadid",
+				"qalqalah",
+				"tarqiq"
+			]
+		}
+	},
+	"ت": {
+		"makhraj": " طرف اللسان مع أصول الثنايا العليا",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"shadid",
+				"tarqiq"
+			]
+		}
+	},
+	"ث": {
+		"makhraj": " طرف اللسان مع أطراف الثنايا العليا",
+		"sifat": {
+			"jahr": 0,
+			"hms": 1,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"rikha",
+				"tarqiq"
+			]
+		}
+	},
+	"ج": {
+		"makhraj": "وسط اللسان مع ما يحاذيه من الحنك الأعلى",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 1,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"shadid",
+				"qalqalah",
+				"tarqiq"
+			]
+		}
+	},
+	"ح": {
+		"makhraj": "وسط الحلق",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"rikha",
+				"halqi",
+				"tarqiq"
+			]
+		}
+	},
+	"خ": {
+		"makhraj": "أقصى الحلق",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 1,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 1,
+			"labels": [
+				"tafkhim",
+				"halqi",
+				"hams",
+				"rikha"
+			]
+		}
+	},
+	"د": {
+		"makhraj": "طرف اللسان مع أصول الثنايا العليا",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 1,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"shadid",
+				"qalqalah",
+				"tarqiq"
+			]
+		}
+	},
+	"ذ": {
+		"makhraj": "طرف اللسان مع أطراف الثنايا العليا",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 1,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"tawassut",
+				"tarqiq"
+			]
+		}
+	},
+	"ر": {
+		"makhraj": "طرف اللسان",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 1,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": "conditional",
+			"labels": [
+				"tawassut",
+				"tafkhim-conditional"
+			]
+		}
+	},
+	"ز": {
+		"makhraj": "طرف اللسان مع أطراف الثنايا العليا",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"tarqiq"
+			]
+		}
+	},
+	"س": {
+		"makhraj": "طرف اللسان مع الثنايا العليا",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"rikha",
+				"tarqiq"
+			]
+		}
+	},
+	"ش": {
+		"makhraj": "وسط اللسان مع ما يحاذيه من الحنك الأعلى",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"rikha",
+				"tarqiq"
+			]
+		}
+	},
+	"ص": {
+		"makhraj": "طرف اللسان مع أصول الثنايا العليا",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 1,
+			"istifal": 0,
+			"itbaq": 1,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 1,
+			"labels": [
+				"tafkhim",
+				"itbaq",
+				"hams",
+				"rikha"
+			]
+		}
+	},
+	"ض": {
+		"makhraj": "حافة اللسان مع الأضراس العليا (ضاد عربية)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 1,
+			"istifal": 0,
+			"itbaq": 1,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 1,
+			"labels": [
+				"tafkhim",
+				"itbaq",
+				"rikha"
+			]
+		}
+	},
+	"ط": {
+		"makhraj": "طرف اللسان مع أصول الثنايا العليا",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 1,
+			"istifal": 0,
+			"itbaq": 1,
+			"infitah": 0,
+			"qalqalah": 1,
+			"ghunnah": 0,
+			"tafkhim": 1,
+			"labels": [
+				"shadid",
+				"tafkhim",
+				"itbaq",
+				"qalqalah"
+			]
+		}
+	},
+	"ظ": {
+		"makhraj": "طرف اللسان مع أطراف الثنايا العليا",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 1,
+			"rikhwah": 0,
+			"isti'la": 1,
+			"istifal": 0,
+			"itbaq": 1,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 1,
+			"labels": [
+				"tafkhim",
+				"itbaq",
+				"tawassut"
+			]
+		}
+	},
+	"ع": {
+		"makhraj": "وسط الحلق",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"halqi",
+				"rikha",
+				"tarqiq"
+			]
+		}
+	},
+	"غ": {
+		"makhraj": "أقصى الحلق",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 1,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 1,
+			"labels": [
+				"halqi",
+				"tafkhim",
+				"rikha"
+			]
+		}
+	},
+	"ف": {
+		"makhraj": "باطن الشفة السفلى مع أطراف الثنايا العليا",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"rikha",
+				"tarqiq",
+				"shafawi"
+			]
+		}
+	},
+	"ق": {
+		"makhraj": "أقصى اللسان مع ما يحاذيه من الحنك الأعلى",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 1,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 1,
+			"ghunnah": 0,
+			"tafkhim": 1,
+			"labels": [
+				"shadid",
+				"tafkhim",
+				"qalqalah"
+			]
+		}
+	},
+	"ك": {
+		"makhraj": "وسط اللسان مع ما يحاذيه من الحنك الأعلى",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"shadid",
+				"tarqiq"
+			]
+		}
+	},
+	"ل": {
+		"makhraj": "طرف اللسان مع لثة الأسنان العليا",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 1,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": "conditional (in لفظ الجلالة after fatḥah/ḍammah)",
+			"labels": [
+				"tawassut",
+				"tarqiq",
+				"tafkhim-conditional"
+			]
+		}
+	},
+	"م": {
+		"makhraj": "الشفتان (الإطباق الخفيف)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 1,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 1,
+			"tafkhim": 0,
+			"labels": [
+				"tawassut",
+				"ghunnah",
+				"shafawi",
+				"tarqiq"
+			]
+		}
+	},
+	"ن": {
+		"makhraj": "طرف اللسان مع الخيشوم (nasal cavity involvement)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 1,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 1,
+			"tafkhim": 0,
+			"labels": [
+				"tawassut",
+				"ghunnah",
+				"tarqiq"
+			]
+		}
+	},
+	"هـ": {
+		"makhraj": "أقصى الحلق (near chest)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"halqi",
+				"rikha",
+				"tarqiq"
+			]
+		}
+	},
+	"و": {
+		"makhraj": "الشفتان (with rounding), semi-vowel",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-layyin",
+				"tarqiq"
+			]
+		}
+	},
+	"ي": {
+		"makhraj": "وسط اللسان مع الحنك الأعلى (semi-vowel)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-layyin",
+				"tarqiq"
+			]
+		}
+	}
+}
