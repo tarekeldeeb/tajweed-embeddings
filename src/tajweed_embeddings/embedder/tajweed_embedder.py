@@ -1,5 +1,8 @@
+"""Tajweed embedding module for Quranic text."""
+
 import os
 import json
+from importlib.resources import files
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -18,26 +21,16 @@ class TajweedEmbedder:
     # ------------------------------------------------------------------
     # CONSTRUCTOR & DATA LOADING
     # ------------------------------------------------------------------
-    def __init__(self, data_dir: Optional[str] = None):
-        # Resolve data directory
-        if data_dir is None:
-            base = os.path.dirname(os.path.abspath(__file__))
-            data_dir = os.path.join(base, "data")
-
-        if not os.path.isdir(data_dir):
-            raise FileNotFoundError(
-                f"Data directory not found: {data_dir}\n"
-                f"Expected: sifat.json, tajweed.rules.json, quran.json"
-            )
+    def __init__(self):
 
         # Load raw JSONs
-        self.sifat: Dict[str, Dict] = self._load_json(data_dir, "sifat.json")
-        self.rules_raw: List[Dict] = self._load_json(data_dir, "tajweed.rules.json")
-        self.quran: Dict[str, Dict[str, str]] = self._load_json(data_dir, "quran.json")
+        self.quran = self._load_json("tajweed_embeddings.data", "quran.json")
+        self.sifat = self._load_json("tajweed_embeddings.data", "sifat.json")
+        self.rules = self._load_json("tajweed_embeddings.data", "tajweed.rules.json")
 
         if not isinstance(self.sifat, dict):
             raise ValueError("Invalid sifat.json format (expected dict)")
-        if not isinstance(self.rules_raw, list):
+        if not isinstance(self.rules, list):
             raise ValueError("Invalid tajweed.rules.json format (expected list)")
         if not isinstance(self.quran, dict):
             raise ValueError("Invalid quran.json format (expected dict)")
@@ -74,7 +67,7 @@ class TajweedEmbedder:
 
         # Tajwīd rules: collect all rule names from annotations
         rule_names_set = set()
-        for entry in self.rules_raw:
+        for entry in self.rules:
             anns = entry.get("annotations", [])
             for ann in anns:
                 rn = ann.get("rule")
@@ -88,7 +81,7 @@ class TajweedEmbedder:
 
         # Index rules by (sura, ayah) → list of annotations
         self.rules_index: Dict[Tuple[str, str], List[Dict]] = {}
-        for entry in self.rules_raw:
+        for entry in self.rules:
             sura = str(entry.get("surah") or entry.get("sura"))
             ayah = str(entry.get("ayah"))
             key = (sura, ayah)
@@ -110,12 +103,9 @@ class TajweedEmbedder:
     # INTERNAL HELPERS
     # ------------------------------------------------------------------
     @staticmethod
-    def _load_json(data_dir: str, filename: str):
-        path = os.path.join(data_dir, filename)
-        if not os.path.isfile(path):
-            raise FileNotFoundError(f"Required JSON not found: {path}")
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+    def _load_json(package: str, name: str):
+        path = files(package).joinpath(name)
+        return json.loads(path.read_text(encoding="utf-8"))
 
     @staticmethod
     def _safe_float(v) -> float:

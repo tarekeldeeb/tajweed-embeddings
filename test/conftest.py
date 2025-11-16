@@ -1,5 +1,5 @@
 import pytest
-from tajweed_embedder import TajweedEmbedder
+from tajweed_embeddings.embedder.tajweed_embedder import TajweedEmbedder
 
 @pytest.fixture
 def emb():

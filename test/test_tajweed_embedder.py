@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from tajweed_embedder import TajweedEmbedder
 
 # -------------------------------------------------------------------
 # BASIC FUNCTIONALITY TESTS
