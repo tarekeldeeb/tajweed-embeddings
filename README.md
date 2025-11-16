@@ -1,7 +1,7 @@
 # Quran Tajweed Embeddings – Tajwīd-Aware Embedding Engine for Quranic Recitation AI
   
 <!-- GitHub Actions Tests -->
-[![Test Status](https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml/badge.svg)](https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml)
+[![Test Status](https://github.com/tarekeldeeb/tajweed-embeddings/actions/workflows/tests.yml/badge.svg)](https://github.com/tarekeldeeb/tajweed-embeddings/actions/workflows/tests.yml)
 
 This project provides a **complete embedding engine** for Qur'ān text that encodes:
 
