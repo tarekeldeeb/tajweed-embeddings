@@ -8,6 +8,12 @@ version = "0.1.0"
 description = "Quran Tajweed Embedding Generator"
 authors = [{ name="Tarek Eldeeb" }]
 requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26"
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

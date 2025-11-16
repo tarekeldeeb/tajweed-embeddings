@@ -29,7 +29,7 @@ This repository implements the **embedding layer**, not the full pipeline.
 
 ### ✔ **Tajweed-aware embeddings**
 
-Every character in the Qur’ān is transformed into a numeric vector containing:
+Qur’ān string is tokenized to phonemes, which are transformed into numeric vectors containing:
 
 1. **Letter one-hot**
 2. **Harakah one-hot**

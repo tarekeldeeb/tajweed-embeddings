@@ -1,6 +1,5 @@
 """Tajweed embedding module for Quranic text."""
 
-import os
 import json
 from importlib.resources import files
 from typing import Dict, List, Optional, Tuple
