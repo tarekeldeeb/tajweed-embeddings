@@ -1,5 +1,8 @@
-
 # Tajweed-Model – Tajwīd-Aware Embedding Engine for Quranic Recitation AI
+  <!-- GitHub Actions Tests -->
+  <a href="https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml">
+    <img src="https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml/badge.svg" alt="Test Status" />
+  </a>
 
 This project provides a **complete embedding engine** for Qur'ān text that encodes:
 
@@ -13,10 +16,11 @@ This project provides a **complete embedding engine** for Qur'ān text that enco
 - pytest-based test suite
 
 It is designed as the **core feature extractor** for a full Tajwīd Teaching AI:
+
 - STT → phoneme alignment  
 - Tajwīd error detection  
 - Recitation scoring  
-- Feedback generation  
+- Feedback generation
 
 This repository implements the **embedding layer**, not the full pipeline.
 
@@ -25,6 +29,7 @@ This repository implements the **embedding layer**, not the full pipeline.
 # 🚀 Features
 
 ### ✔ **Tajweed-aware embeddings**
+
 Every character in the Qur’ān is transformed into a numeric vector containing:
 
 1. **Letter one-hot**
@@ -33,16 +38,21 @@ Every character in the Qur’ān is transformed into a numeric vector containing
 4. **Tajwīd rule flags (n rules)**
 
 ### ✔ **JSON-based Tajwīd rule spans**
+
 Rules are not guessed — they come from curated JSON files.
 
 ### ✔ **Embedding → text reconstruction**
+
 Allows round-trip conversion for testing and diagnostics.
 
 ### ✔ **Scoring and similarity**
+
 Cosine similarity over embedding sequences.
 
 ### ✔ **Full pytest test suite**
+
 Ensures correct behavior across:
+
 - Harakāt
 - Shaddah
 - Unknown letters
