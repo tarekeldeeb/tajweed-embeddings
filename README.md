@@ -61,7 +61,7 @@ Ensures correct behavior across:
 
 ### 🧩 Embedding Vector Layout
 
-Each character in the text → one vector:
+Each phoneme (1+ character) in the text → one vector:
 
 ```text
 ┌───────────────────────────────────────────────────────────────────────────────┐
