@@ -46,6 +46,7 @@ class TajweedEmbedder:
 
         # Harakāt: fixed 5-dim one-hot (fatḥa, kasra, ḍamma, sukūn, shadda)
         self.harakat_chars: List[str] = ["َ", "ِ", "ُ", "ْ", "ّ"]
+        self.harakat_names: List[str] = ["fatha", "kasra", "damma", "sukun", "shadda"]
         self.n_harakat: int = len(self.harakat_chars)
         self.harakat: Dict[str, np.ndarray] = {
             h: np.eye(self.n_harakat, dtype=float)[i]
@@ -53,6 +54,9 @@ class TajweedEmbedder:
         }
         self.index_to_haraka: Dict[int, str] = {
             i: h for i, h in enumerate(self.harakat_chars)
+        }
+        self.index_to_haraka_name: Dict[int, str] = {
+            i: name for i, name in enumerate(self.harakat_names)
         }
         self.default_haraka: np.ndarray = np.zeros(self.n_harakat, dtype=float)
 
@@ -299,6 +303,79 @@ class TajweedEmbedder:
                     chars.append(h_char)
 
         return "".join(chars)
+
+    def encoding_to_string(self, encoding) -> str:
+        """
+        Render a single embedding vector as a readable description that lists
+        the decoded letter, haraka (if any), numeric ṣifāt values, and active
+        tajwīd rules. Useful for debugging embeddings interactively.
+        """
+        # Allow sequences of encodings for convenience (e.g., direct output of text_to_embedding)
+        if isinstance(encoding, (list, tuple)):
+            if not encoding:
+                raise ValueError("Encoding sequence is empty")
+            formatted = []
+            for idx, item in enumerate(encoding):
+                formatted.append(f"[{idx}] {self.encoding_to_string(item)}")
+            return "\n".join(formatted)
+
+        if encoding is None:
+            raise ValueError("Encoding must be provided")
+
+        encoding = np.asarray(encoding, dtype=float)
+
+        if encoding.ndim != 1 or encoding.shape[0] != self.embedding_dim:
+            raise ValueError("Encoding must be a 1-D vector matching embedding_dim")
+
+        parts: List[str] = []
+
+        # Letter
+        letter_slice = encoding[: self.n_letters]
+        letter = ""
+        if letter_slice.size:
+            idx = int(np.argmax(letter_slice))
+            letter = self.index_to_letter.get(idx, "")
+        parts.append(f"Letter: {letter or '(unknown)'}")
+
+        # Haraka
+        haraka_slice = encoding[
+            self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
+        ]
+        haraka_name = ""
+        if haraka_slice.size == self.n_harakat and np.max(haraka_slice) > 0:
+            idx = int(np.argmax(haraka_slice))
+            haraka_name = self.index_to_haraka_name.get(idx, "")
+        parts.append(f"Haraka: {haraka_name or '(none)'}")
+
+        # Sifat values
+        sifat_slice = encoding[
+            self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
+        ]
+        if sifat_slice.size == self.n_sifat:
+            sifat_pairs = [
+                name
+                for name, value in zip(self.sifat_keys, sifat_slice)
+                if float(value) != 0.0
+            ]
+            if sifat_pairs:
+                parts.append("Sifat: " + ", ".join(sifat_pairs))
+        else:
+            parts.append("Sifat: (unavailable)")
+
+        # Tajwid rules (list active ones)
+        rules_slice = encoding[self.idx_rule_start :]
+        if rules_slice.size == self.n_rules and self.n_rules > 0:
+            active_rules = [
+                self.rule_names[i]
+                for i, value in enumerate(rules_slice)
+                if value > 0
+            ]
+            if active_rules:
+                parts.append("Rules: " + ", ".join(active_rules))
+        else:
+            parts.append("Rules: (unavailable)")
+
+        return " | ".join(parts)
 
     # ------------------------------------------------------------------
     # COMPARISON & SCORE
