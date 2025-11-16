@@ -1,8 +1,7 @@
-# Tajweed-Model – Tajwīd-Aware Embedding Engine for Quranic Recitation AI
-  <!-- GitHub Actions Tests -->
-  <a href="https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml">
-    <img src="https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml/badge.svg" alt="Test Status" />
-  </a>
+# Quran Tajweed Embeddings – Tajwīd-Aware Embedding Engine for Quranic Recitation AI
+  
+<!-- GitHub Actions Tests -->
+[![Test Status](https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml/badge.svg)](https://github.com/tarekeldeeb/tajweed-model/actions/workflows/tests.yml)
 
 This project provides a **complete embedding engine** for Qur'ān text that encodes:
 
@@ -26,7 +25,7 @@ This repository implements the **embedding layer**, not the full pipeline.
 
 ---
 
-# 🚀 Features
+## 🚀 Features
 
 ### ✔ **Tajweed-aware embeddings**
 
@@ -60,27 +59,23 @@ Ensures correct behavior across:
 - Long sequences
 - Reconstruction stability
 
----
+### 🧩 Embedding Vector Layout
 
-# 📁 Project Structure
+Each character in the text → one vector:
 
-```
-tajweed-model/
-│
-├── tajweed_embedder.py
-├── sifat.json
-├── tajweed.hafs.uthmani-pause-sajdah.json
-│
-├── test/
-│   └── test_tajweed_embedder.py
-│
-├── README.md
-└── venv/
+```text
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                                EMBEDDING VECTOR                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+[ LETTER (one-hot) | HARAKA (one-hot) | SIFAT (12 floats) | RULE FLAGS (N bits) ]
+        ^                   ^                   ^                    ^
+        |                   |                   |                    |
+   0..L-1           L..H-1            H..H+12-1            (rest of vector)
 ```
 
 ---
 
-# 🔧 Installation
+## 🔧 Installation
 
 ```bash
 python3 -m venv venv
@@ -90,47 +85,111 @@ pip install numpy pytest
 
 ---
 
-# 📦 Usage
-
-## Load files
+## 📦 Quick Setup
 
 ```python
-import json
 from tajweed_embedder import TajweedEmbedder
 
-sifat = json.load(open("sifat.json"))
-rules = json.load(open("tajweed.hafs.uthmani-pause-sajdah.json"))
-
-emb = TajweedEmbedder(sifat, rules)
+emb = TajweedEmbedder()
 ```
 
-## Convert text → embedding
+## Usage Examples
+
+### 1️⃣ Embedding a full āyah
 
 ```python
-vecs = emb.text_to_embedding("بِسْمِ", "1", "1")
+vecs = emb.text_to_embedding(1, 1)
+print(len(vecs))
 ```
 
-## Convert embedding → text
+Expected:
 
-```python
-emb.embedding_to_text(vecs)
+```text
+38
 ```
 
-## Compare two recitations
+### 2️⃣ Embedding a sub-string
 
 ```python
+emb.text_to_embedding(1, 1, "بِسْ")
+```
+
+Expected: `3 vectors`
+
+### 3️⃣ Embedding a full surah
+
+```python
+full = emb.text_to_embedding(1)
+len(full)
+```
+
+Expected: `112`
+
+### 4️⃣ Embedding → Text (Reversible)
+
+```python
+txt = emb.embedding_to_text(emb.text_to_embedding(1, 1, "بِسْمِ"))
+print(txt)
+```
+
+Expected: `بِسْمِ`
+
+### 5️⃣ Cosine Similarity
+
+```python
+e1 = emb.text_to_embedding(1, 1, "بِسْ")
+e2 = emb.text_to_embedding(1, 1, "بَسْ")
 emb.compare(e1, e2)
 ```
 
-## Score recitation
+Expected: `~0.95`
+
+### 6️⃣ Per-character score
 
 ```python
 emb.score(e1, e2)
 ```
 
+Expected: `~0.95`
+
+### 7️⃣ Arabic non-Quranic text
+
+```python
+emb.text_to_embedding(1, 1, "سلام عليكم")
+```
+
+Expected: length preserved.
+
+### 8️⃣ Special Quran symbols
+
+```python
+emb.text_to_embedding(1, 1, "بِسْمِ ۩ اللَّهِ")
+```
+
+Symbols produce zero vectors.
+
+### 9️⃣ Cross-ayah concatenation
+
+```python
+q = emb.quran["1"]
+combined = q["1"] + " " + q["2"]
+emb.text_to_embedding(1, subtext=combined)
+```
+
+Expected length: 76
+
+### 🔟 Random fuzzing
+
+```python
+seq = "".join(random.choice(list(emb.letters)+list(emb.harakat)) for _ in range(50))
+emb.text_to_embedding(1, 1, seq)
+```
+
+Expected: 50
+
 ---
 
-# 🧪 Running Tests
+## 🧪 Running Tests
 
 ```bash
 pytest -q
@@ -138,6 +197,6 @@ pytest -q
 
 ---
 
-# License
+## License
 
-Please contact author
+Please contact author: Tarek Eldeeb
