@@ -44,21 +44,62 @@ class TajweedEmbedder:
         }
         self.n_letters: int = len(self.letters)
 
-        # Harakāt: fixed 5-dim one-hot (fatḥa, kasra, ḍamma, sukūn, shadda)
-        self.harakat_chars: List[str] = ["َ", "ِ", "ُ", "ْ", "ّ"]
-        self.harakat_names: List[str] = ["fatha", "kasra", "damma", "sukun", "shadda"]
-        self.n_harakat: int = len(self.harakat_chars)
-        self.harakat: Dict[str, np.ndarray] = {
-            h: np.eye(self.n_harakat, dtype=float)[i]
-            for i, h in enumerate(self.harakat_chars)
+        # Harakāt: explicit states incl. shadda+vowel combos
+        self.harakat_states: List[str] = [
+            "fatha",
+            "fatha_shadda",
+            "kasra",
+            "kasra_shadda",
+            "damma",
+            "damma_shadda",
+            "sukun",
+        ]
+        self.harakat_state_labels: List[str] = [
+            "fatha",
+            "fatha+shadda",
+            "kasra",
+            "kasra+shadda",
+            "damma",
+            "damma+shadda",
+            "sukun",
+        ]
+        self.n_harakat: int = len(self.harakat_states)
+        self.harakat_vectors: Dict[str, np.ndarray] = {
+            state: np.eye(self.n_harakat, dtype=float)[i]
+            for i, state in enumerate(self.harakat_states)
         }
-        self.index_to_haraka: Dict[int, str] = {
-            i: h for i, h in enumerate(self.harakat_chars)
-        }
-        self.index_to_haraka_name: Dict[int, str] = {
-            i: name for i, name in enumerate(self.harakat_names)
+        self.index_to_haraka_state: Dict[int, str] = {
+            i: state for i, state in enumerate(self.harakat_states)
         }
         self.default_haraka: np.ndarray = np.zeros(self.n_harakat, dtype=float)
+        self.shadda_char: str = "ّ"
+        self.haraka_base_map: Dict[str, str] = {
+            "َ": "fatha",
+            "ِ": "kasra",
+            "ُ": "damma",
+            "ْ": "sukun",
+        }
+        self.diacritic_chars = set(self.haraka_base_map.keys()) | {self.shadda_char}
+        self.haraka_state_to_chars: Dict[str, List[str]] = {
+            "fatha": ["َ"],
+            "fatha_shadda": ["ّ", "َ"],
+            "kasra": ["ِ"],
+            "kasra_shadda": ["ّ", "ِ"],
+            "damma": ["ُ"],
+            "damma_shadda": ["ّ", "ُ"],
+            "sukun": ["ْ"],
+        }
+        # Backwards compatibility: list of raw diacritic characters
+        self.harakat_chars: List[str] = list(self.diacritic_chars)
+        self.harakat: Dict[str, np.ndarray] = {
+            ch: self.harakat_vectors.get(
+                self._compose_haraka_state(
+                    self.haraka_base_map.get(ch), ch == self.shadda_char
+                ),
+                self.default_haraka,
+            )
+            for ch in self.harakat_chars
+        }
 
         # Ṣifāt: fixed order of 12 features per letter
         self.sifat_keys: List[str] = [
@@ -117,6 +158,40 @@ class TajweedEmbedder:
             return float(v)
         except Exception:
             return 0.0
+
+    # ------------------------------------------------------------------
+    # HARAKA HELPERS
+    # ------------------------------------------------------------------
+    def _compose_haraka_state(
+        self, base: Optional[str], has_shadda: bool
+    ) -> Optional[str]:
+        """
+        Map base haraka + shadda flag to the explicit state key.
+        Supported bases: fatha, kasra, damma, sukun
+        """
+        if base in ("fatha", "kasra", "damma"):
+            return base + ("_shadda" if has_shadda else "")
+        if base == "sukun":
+            return "sukun"
+        return None
+
+    def _decode_haraka(self, vec: np.ndarray) -> Tuple[Optional[str], bool]:
+        """Return (base, has_shadda) from an embedding haraka slice."""
+        slice_start = self.idx_haraka_start
+        slice_end = slice_start + self.n_harakat
+        h_slice = vec[slice_start:slice_end]
+        if h_slice.size != self.n_harakat or np.max(h_slice) <= 0:
+            return None, False
+
+        idx = int(np.argmax(h_slice))
+        state = self.index_to_haraka_state.get(idx)
+        if not state:
+            return None, False
+        if state.endswith("_shadda"):
+            return state.replace("_shadda", ""), True
+        if state == "sukun":
+            return "sukun", False
+        return state, False
 
     # ------------------------------------------------------------------
     # TEXT RETRIEVAL (SURA / AYAH / SUBTEXT)
@@ -216,16 +291,23 @@ class TajweedEmbedder:
             rule_flags = [np.zeros(self.n_rules, dtype=float) for _ in range(len(chars))]
 
         embeddings: List[np.ndarray] = []
+        last_vec: Optional[np.ndarray] = None
+        last_base: Optional[str] = None
+        last_has_shadda: bool = False
 
         for i, ch in enumerate(chars):
             # Non-letters: used only to attach harakāt to previous letter
             if ch not in self.letters:
-                if embeddings and ch in self.harakat:
-                    # overwrite haraka slice of previous vector
-                    emb = embeddings[-1]
-                    emb[
+                if last_vec is not None and ch in self.diacritic_chars:
+                    if ch == self.shadda_char:
+                        last_has_shadda = True
+                    else:
+                        last_base = self.haraka_base_map.get(ch, last_base)
+
+                    state = self._compose_haraka_state(last_base, last_has_shadda)
+                    last_vec[
                         self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
-                    ] = self.harakat[ch]
+                    ] = self.harakat_vectors.get(state, self.default_haraka)
                 # ignore all other non-letters (spaces, punctuation, etc.)
                 continue
 
@@ -240,6 +322,8 @@ class TajweedEmbedder:
             vec[
                 self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
             ] = self.default_haraka
+            last_base = None
+            last_has_shadda = False
 
             # Sifāt
             s_entry = self.sifat.get(ch, {})
@@ -258,6 +342,7 @@ class TajweedEmbedder:
                 ] = rule_flags[i]
 
             embeddings.append(vec)
+            last_vec = vec
 
         # If no embeddings at all but text is non-empty (e.g., non-Arabic text),
         # return a single zero-vector so tests like "subtext not found" still see > 0 length.
@@ -298,9 +383,9 @@ class TajweedEmbedder:
             ]
             if haraka_slice.size == self.n_harakat and np.max(haraka_slice) > 0:
                 hi = int(np.argmax(haraka_slice))
-                h_char = self.index_to_haraka.get(hi, "")
-                if h_char:
-                    chars.append(h_char)
+                state = self.index_to_haraka_state.get(hi, "")
+                if state:
+                    chars.extend(self.haraka_state_to_chars.get(state, []))
 
         return "".join(chars)
 
@@ -344,7 +429,8 @@ class TajweedEmbedder:
         haraka_name = ""
         if haraka_slice.size == self.n_harakat and np.max(haraka_slice) > 0:
             idx = int(np.argmax(haraka_slice))
-            haraka_name = self.index_to_haraka_name.get(idx, "")
+            if 0 <= idx < len(self.harakat_state_labels):
+                haraka_name = self.harakat_state_labels[idx]
         parts.append(f"Haraka: {haraka_name or '(none)'}")
 
         # Sifat values

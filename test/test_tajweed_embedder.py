@@ -57,7 +57,18 @@ def test_haraka_detection(emb):
     vec = out[0]
 
     haraka_slice = vec[emb.idx_haraka_start:emb.idx_haraka_start + emb.n_harakat]
-    assert np.argmax(haraka_slice) == 1  # kasra = index 1
+    idx = np.argmax(haraka_slice)
+    assert emb.index_to_haraka_state[idx] == "kasra"
+
+
+def test_haraka_shadda_combo(emb):
+    """Shadda plus vowel should map to combined haraka state."""
+    out = emb.text_to_embedding(1, 1, "بَّ")  # shadda + fatha on ba
+    assert len(out) == 1
+    vec = out[0]
+    haraka_slice = vec[emb.idx_haraka_start:emb.idx_haraka_start + emb.n_harakat]
+    idx = np.argmax(haraka_slice)
+    assert emb.index_to_haraka_state[idx] == "fatha_shadda"
 
 
 def test_vector_length(emb):
