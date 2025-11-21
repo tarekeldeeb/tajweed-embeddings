@@ -225,6 +225,166 @@
 			]
 		}
 	},
+	"ۖ": {
+		"makhraj": "Pause mark (Seli/continue preferred)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"pause-seli"
+			]
+		}
+	},
+	"ۗ": {
+		"makhraj": "Pause mark (Qeli/stop preferred)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"pause-qeli"
+			]
+		}
+	},
+	"ۘ": {
+		"makhraj": "Pause mark (Lazem/mandatory stop)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"pause-lazem"
+			]
+		}
+	},
+	"ۚ": {
+		"makhraj": "Pause mark (Jaiz/permissible stop)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"pause-jaiz"
+			]
+		}
+	},
+	"ۛ": {
+		"makhraj": "Pause mark (Taanoq/paired three dots)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"pause-taanoq"
+			]
+		}
+	},
+	"ۙ": {
+		"makhraj": "Pause mark (Mamnoo/do not stop)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"pause-mamnoo"
+			]
+		}
+	},
+	"ۜ": {
+		"makhraj": "Pause mark (Sakta/pause without breath)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"pause-sakta"
+			]
+		}
+	},
+	"ۢ": {
+		"makhraj": "Iqlab indicator (non-pause annotation)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rule-iqlab"
+			]
+		}
+	},
 	"ى": {
 		"makhraj": "Alif maqsurah (final alif sound)",
 		"sifat": {
@@ -870,8 +1030,52 @@
 			]
 		}
 	},
+	"ۥ": {
+		"makhraj": "الشفتان (waw saghīrah / small waw madd marker)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-layyin",
+				"tarqiq"
+			]
+		}
+	},
 	"ي": {
 		"makhraj": "وسط اللسان مع الحنك الأعلى (semi-vowel)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-layyin",
+				"tarqiq"
+			]
+		}
+	},
+	"ۦ": {
+		"makhraj": "وسط اللسان مع الحنك الأعلى (ya saghīrah / small ya madd marker)",
 		"sifat": {
 			"jahr": 1,
 			"hams": 0,
