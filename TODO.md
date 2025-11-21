@@ -1,13 +1,13 @@
 # Tajweed Embeddings TODO
 
 1. **Support Qur'ān-specific glyph variants**  
-   Extend `sifat.json` / `TajweedEmbedder.letters` to include characters such as hamzat‑waṣl (`ٱ`), dagger alif (`ٰ`), maddah forms, etc. Currently these characters are skipped entirely by `text_to_embedding` (`src/tajweed_embeddings/embedder/tajweed_embedder.py:217-226`), so they never produce vectors.
+   ✅ Done. `sifat.json` / `TajweedEmbedder.letters` now include Qur’ān glyphs (hamzat‑waṣl, dagger alif, maddah forms, small waw/ya, etc.) and tajwīd markers. Aliases added for glyph variants.
 
 2. **Realign tajwīd rule spans for normalized text**  
-   `_apply_rule_spans` indexes the raw Qur’an text, but the embedding loop drops unsupported glyphs, causing offsets to drift. Rules like `lam_shamsiyyah` end up attached to the wrong letters (`sura 1:1`). Normalize the text in the same way when computing spans, or adjust annotations to match the filtered sequence.
+   🔄 Still pending. `_apply_rule_spans` indexes raw text; offsets can drift when glyphs are skipped/aliased. Normalize/align spans to the filtered sequence.
 
 3. **Preserve multiple harakāt (shadda + vowel)**  
-   The current haraka handling overwrites the slice each time a diacritic is seen (`src/tajweed_embeddings/embedder/tajweed_embedder.py:217-224`). Letters with shadda plus a vowel lose the shadda information, so their embeddings look identical to plain letters. Track shadda separately or allow multiple active haraka flags.
+   ✅ Done. Haraka slice expanded; shadda+vowel combos are explicit states; tanwīn and alternate sukūn handled; pause slice added.
 
 4. **Represent shadda explicitly in embeddings**  
-   Beyond the overwrite bug, there is no dedicated feature to indicate a shadda, so doubled consonants cannot be distinguished. Add a boolean/shadda channel (or reuse the haraka vector with multiple bits) and make `encoding_to_string` aware of it.
+   ✅ Done via expanded haraka states that keep shadda; decoding reflects combined states.

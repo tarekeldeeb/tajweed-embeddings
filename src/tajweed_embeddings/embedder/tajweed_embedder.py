@@ -36,6 +36,14 @@ class TajweedEmbedder:
 
         # Pause glyphs (non-letters) to be modeled via pause slice, not letter one-hot
         self.pause_chars: set[str] = {"ۖ", "ۗ", "ۘ", "ۚ", "ۛ", "ۜ", "ۙ"}
+        # Tajweed rule markers (non-pause glyphs)
+        self.marker_rule_map: Dict[str, str] = {
+            "ۢ": "iqlab",
+            "۬": "tas_heel",
+            "۪": "imala",
+            "۫": "ishmam",
+            "ۣ": "optional_seen",
+        }
 
         # Letters are taken from sifat keys
         self.letters: List[str] = sorted(
@@ -52,6 +60,7 @@ class TajweedEmbedder:
         self.char_aliases: Dict[str, str] = {
             "ۨ": "ن",  # small high noon
             "ۧ": "ۦ",  # map variant small yeh to canonical small yeh glyph
+            "ۭ": "ۢ",  # small low meem -> iqlab indicator
         }
 
         # Harakāt: explicit states incl. shadda+vowel combos, tanwīn, and alt sukūn
@@ -91,13 +100,14 @@ class TajweedEmbedder:
         }
         self.default_haraka: np.ndarray = np.zeros(self.n_harakat, dtype=float)
         self.shadda_char: str = "ّ"
-        self.alt_sukun_char: str = "۟"
+        self.alt_sukun_char: str = "۠"
         self.haraka_base_map: Dict[str, str] = {
             "َ": "fatha",
             "ِ": "kasra",
             "ُ": "damma",
             "ْ": "sukun",
             self.alt_sukun_char: "sukun_zero",
+            "۟": "sukun",  # rounded zero mark treated as plain sukun
             "ً": "fathatan",
             "ٍ": "kasratan",
             "ٌ": "dammatan",
@@ -161,6 +171,8 @@ class TajweedEmbedder:
                 rn = ann.get("rule")
                 if rn:
                     rule_names_set.add(rn)
+        # Include marker-driven rules even if absent from rules.json
+        rule_names_set.update(self.marker_rule_map.values())
         self.rule_names: List[str] = sorted(rule_names_set)
         self.n_rules: int = len(self.rule_names)
         self.rule_to_index: Dict[str, int] = {
@@ -412,6 +424,12 @@ class TajweedEmbedder:
                 vec[
                     self.idx_rule_start : self.idx_rule_start + self.n_rules
                 ] = rule_flags[i]
+            # Inline tajweed rule markers on the character itself
+            if ch in self.marker_rule_map:
+                rname = self.marker_rule_map[ch]
+                ri = self.rule_to_index.get(rname)
+                if ri is not None:
+                    vec[self.idx_rule_start + ri] = 1.0
 
             embeddings.append(vec)
             last_vec = vec

@@ -1052,6 +1052,86 @@
 			]
 		}
 	},
+	"۬": {
+		"makhraj": "Tas-heel indicator (no sound, tajweed rule marker)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rule-tas-heel"
+			]
+		}
+	},
+	"۪": {
+		"makhraj": "Imalah indicator (no sound, tajweed rule marker)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rule-imala"
+			]
+		}
+	},
+	"۫": {
+		"makhraj": "Ishmam indicator (no sound, tajweed rule marker)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rule-ishmam"
+			]
+		}
+	},
+	"ۣ": {
+		"makhraj": "Optional Seen indicator (no sound, tajweed rule marker)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 0,
+			"itbaq": 0,
+			"infitah": 0,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rule-optional-seen"
+			]
+		}
+	},
 	"ي": {
 		"makhraj": "وسط اللسان مع الحنك الأعلى (semi-vowel)",
 		"sifat": {
