@@ -22,6 +22,231 @@
 			]
 		}
 	},
+	"أ": {
+		"makhraj": "Aqsā al-Halq (deepest part of the throat, hamza on alif)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"halqi",
+				"shadid",
+				"hams",
+				"tarqiq"
+			]
+		}
+	},
+	"إ": {
+		"makhraj": "Aqsā al-Halq (deepest part of the throat, hamza below alif)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"halqi",
+				"shadid",
+				"hams",
+				"tarqiq"
+			]
+		}
+	},
+	"ؤ": {
+		"makhraj": "Aqsā al-Halq (deepest part of the throat, hamza on waw)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"halqi",
+				"shadid",
+				"hams",
+				"tarqiq"
+			]
+		}
+	},
+	"ئ": {
+		"makhraj": "Aqsā al-Halq (deepest part of the throat, hamza on ya)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"halqi",
+				"shadid",
+				"hams",
+				"tarqiq"
+			]
+		}
+	},
+	"ٔ": {
+		"makhraj": "Aqsā al-Halq (combining hamza)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"halqi",
+				"shadid",
+				"hams",
+				"tarqiq"
+			]
+		}
+	},
+	"ا": {
+		"makhraj": "Al-Jawf (open space of the mouth)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-madd",
+				"tarqiq"
+			]
+		}
+	},
+	"ٱ": {
+		"makhraj": "Hamzat al-wasl (connective alif)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-madd",
+				"tarqiq"
+			]
+		}
+	},
+	"ٓ": {
+		"makhraj": "Maddah sign (treated as alif madd)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-madd",
+				"tarqiq"
+			]
+		}
+	},
+	"ٰ": {
+		"makhraj": "Dagger alif (superscript alif)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-madd",
+				"tarqiq"
+			]
+		}
+	},
+	"ى": {
+		"makhraj": "Alif maqsurah (final alif sound)",
+		"sifat": {
+			"jahr": 1,
+			"hams": 0,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"rikhwah",
+				"harf-madd",
+				"tarqiq"
+			]
+		}
+	},
 	"ب": {
 		"makhraj": "Ash-Shafatan (both lips)",
 		"sifat": {
@@ -47,6 +272,28 @@
 	},
 	"ت": {
 		"makhraj": " طرف اللسان مع أصول الثنايا العليا",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 1,
+			"tawassut": 0,
+			"rikhwah": 0,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"shadid",
+				"tarqiq"
+			]
+		}
+	},
+	"ة": {
+		"makhraj": " طرف اللسان مع أصول الثنايا العليا (ta marbuta)",
 		"sifat": {
 			"jahr": 0,
 			"hams": 1,
@@ -551,6 +798,29 @@
 			"labels": [
 				"tawassut",
 				"ghunnah",
+				"tarqiq"
+			]
+		}
+	},
+	"ه": {
+		"makhraj": "أقصى الحلق (near chest)",
+		"sifat": {
+			"jahr": 0,
+			"hams": 1,
+			"shiddah": 0,
+			"tawassut": 0,
+			"rikhwah": 1,
+			"isti'la": 0,
+			"istifal": 1,
+			"itbaq": 0,
+			"infitah": 1,
+			"qalqalah": 0,
+			"ghunnah": 0,
+			"tafkhim": 0,
+			"labels": [
+				"hams",
+				"halqi",
+				"rikha",
 				"tarqiq"
 			]
 		}
