@@ -84,6 +84,7 @@ def test_vector_length(emb):
 # -------------------------------------------------------------------
 
 def test_embedding_to_text_basic(emb):
+    """Round-trip produces readable Arabic with harakat."""
     vecs = emb.text_to_embedding(1, 1, "بِسْ")
     txt = emb.embedding_to_text(vecs)
     assert isinstance(txt, str)
@@ -93,6 +94,7 @@ def test_embedding_to_text_basic(emb):
 
 
 def test_embedding_to_text_reversible(emb):
+    """Reconstruct preserves base letters even if vowels vary."""
     sample = "بِسْمِ"
     emb_list = emb.text_to_embedding(1, 1, sample)
     reconstructed = emb.embedding_to_text(emb_list)
@@ -192,3 +194,13 @@ def test_full_surah_has_rule_flags(emb):
     out = emb.text_to_embedding(1)
     assert len(out) > 0
     assert any(vec[emb.idx_rule_start:].sum() > 0 for vec in out)
+
+
+def test_maddah_above_attaches_to_alif(emb):
+    """Decomposed alif+maddah should produce one letter with madd haraka."""
+    out = emb.text_to_embedding(1, 1, "آ")
+    assert len(out) == 1
+    vec = out[0]
+    haraka_slice = vec[emb.idx_haraka_start : emb.idx_haraka_start + emb.n_harakat]
+    idx = int(haraka_slice.argmax())
+    assert emb.index_to_haraka_state.get(idx) == "madd"

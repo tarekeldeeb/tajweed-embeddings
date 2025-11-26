@@ -12,7 +12,8 @@ SPECIAL_SYMBOLS = [
 
 def count_letters(emb, text):
     """Utility: count only letters (not diacritics, not spaces, not symbols)."""
-    return sum(ch in emb.letters for ch in text)
+    normalized = emb._normalize_text(text)  # type: ignore[attr-defined]
+    return sum(ch in emb.letters for ch in normalized)
 
 
 # -------------------------------------------------------------------------

@@ -1,2 +1,4 @@
 numpy>=1.26
 pytest>=7.4
+tqdm>=4.66
+requests>=2.30

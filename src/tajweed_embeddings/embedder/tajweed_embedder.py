@@ -2,8 +2,9 @@
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches,too-many-locals,duplicate-code
 
 import json
-from importlib.resources import files
+import subprocess
 import unicodedata
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -12,6 +13,7 @@ from .harakat_embedder import HarakatEmbedder
 from .letters_embedder import LettersEmbedder
 from .sifat_embedder import SifatEmbedder
 from .tajweed_rules_embedder import TajweedRulesEmbedder
+from tajweed_embeddings.util.normalization import normalize_superscript_alef
 
 import numpy as np
 
@@ -30,6 +32,9 @@ class TajweedEmbedder:
     # CONSTRUCTOR & DATA LOADING
     # ------------------------------------------------------------------
     def __init__(self):
+
+        # Auto-bootstrap missing data files if possible.
+        self._ensure_data_ready()
 
         # Load raw JSONs
         self.quran = self._load_json("tajweed_embeddings.data", "quran.json")
@@ -125,10 +130,148 @@ class TajweedEmbedder:
     # ------------------------------------------------------------------
     # INTERNAL HELPERS
     # ------------------------------------------------------------------
-    @staticmethod
-    def _load_json(package: str, name: str):
-        path = files(package).joinpath(name)
+    def _load_json(self, package: str, name: str):
+        """
+        Load JSON directly from the on-disk data directory. This avoids stale
+        package caches and ensures freshly generated files are picked up.
+        """
+        path = self._data_dir() / name
         return json.loads(path.read_text(encoding="utf-8"))
+
+    def _ensure_data_ready(self) -> None:
+        """
+        Ensure packaged data files exist. If missing, regenerate from the Tanzil
+        text and classifier outputs on-the-fly.
+        """
+        # Resolve repo root and key paths.
+        data_dir = self._data_dir()
+        data_dir.mkdir(parents=True, exist_ok=True)
+        repo_root = data_dir.parent.parent  # .../src
+        repo_root = repo_root.parent  # project root
+        rules_gen_dir = repo_root / "rules-gen"
+        quran_txt = rules_gen_dir / "output" / "quran-uthmani.txt"
+        quran_json = data_dir / "quran.json"
+        rules_json = data_dir / "tajweed.rules.json"
+
+        # First attempt a lightweight restore from git if files are missing.
+        if (
+            not rules_json.exists()
+            or rules_json.stat().st_size == 0
+            or not self._json_type_matches(rules_json, list)
+        ):
+            self._restore_from_git(rules_json, "src/tajweed_embeddings/data/tajweed.rules.json")
+        if (
+            not quran_json.exists()
+            or quran_json.stat().st_size == 0
+            or not self._json_type_matches(quran_json, dict)
+        ):
+            self._restore_from_git(quran_json, "src/tajweed_embeddings/data/quran.json")
+
+        # If both are now valid, we're done.
+        if self._json_type_matches(rules_json, list) and self._json_type_matches(quran_json, dict):
+            return
+
+        # Rebuild rules JSON or source text if missing or invalid.
+        need_rules = (
+            (not rules_json.exists())
+            or rules_json.stat().st_size == 0
+            or not self._json_type_matches(rules_json, list)
+        )
+        need_quran_txt = not quran_txt.exists()
+
+        if need_rules or need_quran_txt:
+            if not quran_txt.exists():
+                # Try to restore the source text from git; if still missing, bail out.
+                self._restore_from_git(quran_txt, "rules-gen/output/quran-uthmani.txt")
+            if not quran_txt.exists():
+                raise FileNotFoundError(
+                    f"Missing Quran text at {quran_txt}. "
+                    "Run rules-gen/tajweed_classifier.py after installing its dependencies "
+                    "(pip install -r rules-gen/requirements.txt)."
+                )
+            cmd = [
+                "python3",
+                str(rules_gen_dir / "tajweed_classifier.py"),
+                "--json",
+                "--output",
+                str(rules_json),
+            ]
+            try:
+                # Feed the existing text via stdin.
+                with quran_txt.open("rb") as fh:
+                    subprocess.run(cmd, cwd=repo_root, check=True, stdin=fh)
+            except Exception as exc:
+                # Fall back to restoring from git if available, otherwise bubble up.
+                self._restore_from_git(rules_json, "src/tajweed_embeddings/data/tajweed.rules.json")
+                if not self._json_type_matches(rules_json, list):
+                    raise RuntimeError(
+                        "Failed to generate tajweed.rules.json; ensure rules-gen dependencies "
+                        "are installed (pip install -r rules-gen/requirements.txt)."
+                    ) from exc
+
+        # Build quran.json if missing or invalid.
+        need_quran_json = (
+            (not quran_json.exists())
+            or quran_json.stat().st_size == 0
+            or not self._json_type_matches(quran_json, dict)
+        )
+        if need_quran_json:
+            if not quran_txt.exists():
+                raise FileNotFoundError(
+                    f"Missing Quran text at {quran_txt}; cannot build quran.json."
+                )
+            cmd = [
+                "python3",
+                str(repo_root / "src" / "tajweed_embeddings" / "util" / "tanzil_to_json.py"),
+                "--input",
+                str(quran_txt),
+                "--output-dir",
+                str(data_dir),
+                "--output-filename",
+                "quran.json",
+            ]
+            try:
+                subprocess.run(cmd, cwd=repo_root, check=True)
+            except Exception:
+                # Fall back to restoring from git if available.
+                self._restore_from_git(quran_json, "src/tajweed_embeddings/data/quran.json")
+
+        # Final sanity: raise if still missing/invalid so failures are explicit.
+        if not self._json_type_matches(rules_json, list):
+            raise FileNotFoundError(f"Could not prepare tajweed rules JSON at {rules_json}")
+        if not self._json_type_matches(quran_json, dict):
+            raise FileNotFoundError(f"Could not prepare Quran JSON at {quran_json}")
+
+    def _data_dir(self) -> Path:
+        """Return path to the local data directory."""
+        return Path(__file__).resolve().parent.parent / "data"
+
+    @staticmethod
+    def _json_type_matches(path: Path, expected_type: type) -> bool:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return isinstance(data, expected_type)
+        except Exception:
+            return False
+
+    @staticmethod
+    def _restore_from_git(target: Path, git_path: str) -> None:
+        """
+        Restore a file from the current git HEAD. Best-effort; leaves the file
+        missing if git or the path is unavailable.
+        """
+        try:
+            blob = subprocess.check_output(["git", "show", f"HEAD:{git_path}"])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(blob)
+        except Exception:
+            # Give up silently; caller will fail later if file still missing.
+            pass
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        """Apply shared Quran text normalizations."""
+        return normalize_superscript_alef(text or "")
 
     # ------------------------------------------------------------------
     # HARAKA HELPERS
@@ -178,7 +321,7 @@ class TajweedEmbedder:
         ayah_str = str(ayah) if ayah is not None else None
 
         if subtext is not None:
-            return subtext
+            return self._normalize_text(subtext)
 
         if sura_str not in self.quran:
             raise ValueError(f"Sura {sura_str} not found in quran.json")
@@ -186,12 +329,12 @@ class TajweedEmbedder:
         if ayah_str is not None:
             if ayah_str not in self.quran[sura_str]:
                 raise ValueError(f"Ayah {sura_str}:{ayah_str} not found in quran.json")
-            return self.quran[sura_str][ayah_str]
+            return self._normalize_text(self.quran[sura_str][ayah_str])
 
         # Full sūrah: concatenate āyāt in numeric order
         ayat_map = self.quran[sura_str]
         ordered_texts = [ayat_map[k] for k in sorted(ayat_map.keys(), key=int)]
-        return "".join(ordered_texts)
+        return self._normalize_text("".join(ordered_texts))
 
     # ------------------------------------------------------------------
     # RULE FLAGS
@@ -270,6 +413,7 @@ class TajweedEmbedder:
             apply_rules: bool,
             add_end_pause: bool,
         ) -> List[np.ndarray]:
+            text = self._normalize_text(text)
             chars = list(text)
             filtered_len = 0
             word_last_indices: set[int] = set()
@@ -395,7 +539,7 @@ class TajweedEmbedder:
             ayat_map = self.quran[sura_key]
             embeddings: List[np.ndarray] = []
             for a_num in sorted(ayat_map.keys(), key=int):
-                text = ayat_map[a_num]
+                text = self._normalize_text(ayat_map[a_num])
                 embeddings.extend(
                     _embed_segment(text, sura, int(a_num), True, True)
                 )

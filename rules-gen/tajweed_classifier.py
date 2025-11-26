@@ -12,6 +12,17 @@ import unicodedata
 import argparse
 import tempfile
 import requests
+from pathlib import Path
+
+REPO_SRC = Path(__file__).resolve().parent.parent / "src"
+if str(REPO_SRC) not in sys.path:
+    sys.path.insert(0, str(REPO_SRC))
+
+try:
+    from tajweed_embeddings.util.normalization import normalize_superscript_alef
+except Exception:
+    def normalize_superscript_alef(text: str) -> str:
+        return text.replace("ـٰ", "ٰ")
 
 RangeAttributes = namedtuple("Attributes", "start end attributes")
 
@@ -381,7 +392,12 @@ def run_tree(tree, exemplar):
 
 
 def label_ayah(params):
-    surah, ayah, text, rule_trees = params  # Multiprocessing...
+    # Support older 4-tuple call signature by defaulting return_json to False.
+    if len(params) == 4:
+        surah, ayah, text, rule_trees = params  # Multiprocessing...
+        return_json = False
+    else:
+        surah, ayah, text, rule_trees, return_json = params  # Multiprocessing...
     # We have to cut out the basmala since it is, in effect, a separate verse.
     # Rules that depend on ayah start/end stop working if it's kept in place.
     # But we remember the offset so we can put everything back where we found it.
@@ -440,7 +456,7 @@ def label_ayah(params):
         "ayah": ayah,
         "annotations": sorted(annotations, key=lambda x: x["start"])
     }
-    if args.json:
+    if return_json:
         return json
     else:
         e = embedding()
@@ -462,9 +478,14 @@ def spinning_cursor():
             yield cursor
 
 if __name__ == "__main__":
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    output_dir = os.path.join(base_dir, "output")
+
     parser = argparse.ArgumentParser(description='Generate Quran Tajweed Label Embeddings.')
     parser.add_argument('--json', action='store_true', help='Generate a JSON file, instead of embeddings')
     parser.add_argument('--dictionary', action='store_true', help='Generate a dictionary file. Does not work with --json')
+    parser.add_argument('--output', type=str, default=None,
+                        help='Path to write output file. Defaults to STDOUT.')
     global args
     global dict
     args = parser.parse_args()
@@ -481,8 +502,10 @@ if __name__ == "__main__":
             "end": json2tree(json.load(open(end_file))),
         }
     if sys.stdin.isatty():
-        txt_url = "https://tanzil.net/pub/download/index.php?quranType=uthmani&outType=txt-2&agree=true"
-        fname = 'quran-uthmani.txt'
+                  
+        txt_url = "https://tanzil.net/pub/download/index.php?marks=true&alif=false&quranType=uthmani&outType=txt-2&agree=true"
+        fname = os.path.join(output_dir, "quran-uthmani.txt")
+        os.makedirs(os.path.dirname(fname), exist_ok=True)
         if(os.path.exists(fname)):
             eprint(f'\nSTDIN is empty! Reading Quran Text from:\n\t{fname}', end="")
         else:
@@ -496,6 +519,7 @@ if __name__ == "__main__":
         file = sys.stdin
     # Read in text to classify
     tasks = []
+    expected_counts = {}
     spinner = spinning_cursor()
     eprint("\nReading Text..", end=" ")
     for line in file:
@@ -506,7 +530,11 @@ if __name__ == "__main__":
             continue
         eprint('\b', end="")
         sys.stderr.flush()
-        tasks.append((int(line[0]), int(line[1]), line[2].strip(), rule_trees))
+        surah = int(line[0])
+        ayah = int(line[1])
+        text = normalize_superscript_alef(line[2].strip())
+        expected_counts[surah] = expected_counts.get(surah, 0) + 1
+        tasks.append((surah, ayah, text, rule_trees, args.json))
 
     # Perform classification.
     eprint("\nPerforming classification..")
@@ -515,12 +543,41 @@ if __name__ == "__main__":
     for result in tqdm.tqdm(pool.imap(label_ayah, tasks), total=len(tasks)):
         results.append(result)
 
+    # Basic sanity check: we should emit as many ayat per surah as we read in.
+    if args.json:
+        produced = {}
+        for r in results:
+            produced[r["surah"]] = produced.get(r["surah"], 0) + 1
+    else:
+        produced = {}
+        for r in results:
+            surah_num = int(r.split("|", 2)[0])
+            produced[surah_num] = produced.get(surah_num, 0) + 1
+
+    missing = {
+        s: expected_counts[s] - produced.get(s, 0)
+        for s in expected_counts
+        if produced.get(s, 0) != expected_counts[s]
+    }
+    if missing:
+        raise RuntimeError(f"Mismatch in ayah counts per surah: {missing}")
+
     # Pretty-print output because disk space is cheap.
     delete_last_line(6)
     if args.json:
-        json.dump(results, sys.stdout, indent=2, sort_keys=True)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as fh:
+                json.dump(results, fh, indent=2, sort_keys=True)
+        else:
+            json.dump(results, sys.stdout, indent=2, sort_keys=True)
     else:
-        print("\n".join(results))
+        out_text = "\n".join(results)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as fh:
+                fh.write(out_text)
+                fh.write("\n")
+        else:
+            print(out_text)
     print("")
 
     # Print the optional Dictionary

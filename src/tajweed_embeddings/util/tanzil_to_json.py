@@ -1,6 +1,14 @@
 import json
 import os
 import argparse
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tajweed_embeddings.util.normalization import normalize_superscript_alef
 
 def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="quran.json"):
     # ---------------------------------------
@@ -50,6 +58,8 @@ def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="q
             except ValueError:
                 print("⚠️ Skipping malformed line:", line)
                 continue
+
+            text = normalize_superscript_alef(text)
 
             if sura not in quran:
                 quran[sura] = {}
