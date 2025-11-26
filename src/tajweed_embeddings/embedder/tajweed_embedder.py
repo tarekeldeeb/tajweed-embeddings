@@ -203,12 +203,24 @@ class TajweedEmbedder:
         }
 
         # Ṣifāt: fixed order of 12 features per letter
-        self.sifat_keys: List[str] = [
-            "jahr", "hams", "shiddah", "tawassut", "rikhwah",
-            "isti'la", "istifal", "itbaq", "infitah",
-            "qalqalah", "ghunnah", "tafkhim",
+        # Optimized ṣifāt encoding:
+        # - jahr / hams (1 bit)
+        # - shiddah / tawassut / rikhwah (2 bits, 3 states)
+        # - isti'la / istifal (1 bit)
+        # - infitah / itbaq (1 bit)
+        # - idhlaq / ismat (1 bit) [default 0 if absent in data]
+        self.sifat_components = [
+            {"name": "jahr_hams", "bits": 1, "true": "jahr", "false": "hams"},
+            {
+                "name": "strength",
+                "bits": 2,
+                "states": ["rikhwah", "tawassut", "shiddah"],
+            },
+            {"name": "isti'la", "bits": 1, "true": "isti'la", "false": "istifal"},
+            {"name": "infitah", "bits": 1, "true": "infitah", "false": "itbaq"},
+            {"name": "idhlaq", "bits": 1, "true": "idhlaq", "false": "ismat"},
         ]
-        self.n_sifat: int = len(self.sifat_keys)
+        self.n_sifat: int = sum(comp["bits"] for comp in self.sifat_components)
 
         # Tajwīd rules: collect all rule names from annotations
         rule_names_set = set()
@@ -266,6 +278,84 @@ class TajweedEmbedder:
             return float(v)
         except Exception:
             return 0.0
+
+    def _encode_sifat(self, s_dict: Dict[str, float]) -> np.ndarray:
+        """Encode sifat dict into compact bit representation."""
+        vec = np.zeros(self.n_sifat, dtype=float)
+        pos = 0
+
+        # jahr vs hams
+        jahr = self._safe_float(s_dict.get("jahr", 0))
+        hams = self._safe_float(s_dict.get("hams", s_dict.get("hms", 0)))
+        vec[pos] = 1.0 if jahr > 0 else 0.0
+        pos += 1
+
+        # strength: rikhwah / tawassut / shiddah
+        shiddah = self._safe_float(s_dict.get("shiddah", 0))
+        tawassut = self._safe_float(s_dict.get("tawassut", 0))
+        rikhwah = self._safe_float(s_dict.get("rikhwah", 0))
+        state = 0
+        if shiddah > 0:
+            state = 2
+        elif tawassut > 0:
+            state = 1
+        elif rikhwah > 0:
+            state = 0
+        vec[pos] = state & 1
+        vec[pos + 1] = (state >> 1) & 1
+        pos += 2
+
+        # isti'la vs istifal
+        isti = self._safe_float(s_dict.get("isti'la", 0))
+        vec[pos] = 1.0 if isti > 0 else 0.0
+        pos += 1
+
+        # infitah vs itbaq
+        inf = self._safe_float(s_dict.get("infitah", 0))
+        itb = self._safe_float(s_dict.get("itbaq", 0))
+        vec[pos] = 1.0 if inf > 0 else 0.0  # closed if itbaq
+        pos += 1
+
+        # idhlaq vs ismat (data may omit; default 0)
+        idh = self._safe_float(s_dict.get("idhlaq", 0))
+        vec[pos] = 1.0 if idh > 0 else 0.0
+
+        return vec
+
+    def _decode_sifat(self, slice_vec: np.ndarray) -> List[str]:
+        """Decode compact sifat bits to human-readable labels."""
+        if slice_vec.size < self.n_sifat:
+            return []
+        pos = 0
+        labels: List[str] = []
+
+        # jahr / hams
+        jahr_bit = slice_vec[pos] > 0
+        labels.append("jahr" if jahr_bit else "hams")
+        pos += 1
+
+        # strength
+        state = int(slice_vec[pos]) | (int(slice_vec[pos + 1]) << 1)
+        strength_states = ["rikhwah", "tawassut", "shiddah"]
+        if 0 <= state < len(strength_states):
+            labels.append(strength_states[state])
+        pos += 2
+
+        # isti'la / istifal
+        isti_bit = slice_vec[pos] > 0
+        labels.append("isti'la" if isti_bit else "istifal")
+        pos += 1
+
+        # infitah / itbaq
+        inf_bit = slice_vec[pos] > 0
+        labels.append("infitah" if inf_bit else "itbaq")
+        pos += 1
+
+        # idhlaq / ismat
+        idh_bit = slice_vec[pos] > 0
+        labels.append("idhlaq" if idh_bit else "ismat")
+
+        return labels
 
     # ------------------------------------------------------------------
     # HARAKA HELPERS
@@ -507,12 +597,9 @@ class TajweedEmbedder:
             # Sifāt
             s_entry = self.sifat.get(ch, {})
             s_dict = s_entry.get("sifat", {}) if isinstance(s_entry, dict) else {}
-            sifat_values = [
-                self._safe_float(s_dict.get(key, 0)) for key in self.sifat_keys
-            ]
             vec[
                 self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
-            ] = np.array(sifat_values, dtype=float)
+            ] = self._encode_sifat(s_dict)
 
             # Rule flags for this character
             if self.n_rules and filtered_idx < len(rule_flags):
@@ -657,11 +744,7 @@ class TajweedEmbedder:
             ]
             sifat_values: List[str] = []
             if sifat_slice.size == self.n_sifat:
-                sifat_values = [
-                    name
-                    for name, value in zip(self.sifat_keys, sifat_slice)
-                    if float(value) != 0.0
-                ]
+                sifat_values = self._decode_sifat(sifat_slice)
 
             # Rules
             rules_slice = enc[self.idx_rule_start :]

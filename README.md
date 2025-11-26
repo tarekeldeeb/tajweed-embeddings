@@ -7,7 +7,7 @@ This project provides a **complete embedding engine** for Qur'ān text that enco
 
 - Arabic letter identity (one-hot)
 - Harakāt (fatḥah, kasrah, ḍammah, sukoon, shaddah)
-- Ṣifāt al-ḥurūf (12 phonetic properties)
+- Ṣifāt al-ḥurūf (optimized bits: jahr/hams, strength trio, isti'la/istifal, infitah/itbaq, idhlaq/ismat)
 - Tajwīd rule flags based on structured JSON rule spans  
   (idghām, ikhfa’, iqlāb, madd types, qalqalah, ghunnah…)
 - Automatic reconstruction from embedding → text
@@ -33,7 +33,7 @@ Qur’ān string is tokenized to phonemes, which are transformed into numeric ve
 
 1. **Letter one-hot**
 2. **Harakah one-hot**
-3. **Ṣifāt 12-dimensional vector**
+3. **Ṣifāt compact bit vector (5 components / 6 bits)**
 4. **Tajwīd rule flags (n rules)**
 
 ### ✔ **JSON-based Tajwīd rule spans**
@@ -61,17 +61,26 @@ Ensures correct behavior across:
 
 ### 🧩 Embedding Vector Layout
 
-Each phoneme (1+ character) in the text → one vector:
+Each phoneme (letter + optional marks) becomes one vector:
 
-```text
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                                EMBEDDING VECTOR                               │
-└───────────────────────────────────────────────────────────────────────────────┘
-[ LETTER (one-hot) | HARAKA (one-hot) | SIFAT (12 floats) | RULE FLAGS (N bits) ]
-        ^                   ^                   ^                    ^
-        |                   |                   |                    |
-   0..L-1           L..H-1            H..H+12-1            (rest of vector)
+- `letters` (one-hot) — includes Qur’ān glyph variants and tajwīd markers
+- `haraka` (12 states) — fatha/‿/و/°/tanwīn, shadda combos (e.g., fatha+shadda = ώ), madd
+- `pause` (3-bit code) — 0 do-not-stop, 1 seli, 2 jaiz, 3 taanoq, 4 qeli/end-ayah, 5 sakta, 6 lazem
+- `sifat` (12 floats) — jahr, hams, shiddah, tawassut, rikhwah, isti'la, istifal, itbaq, infitah, qalqalah, ghunnah, tafkhim
+- `rules` (N bits) — tajwīd rule spans + inline markers
+
+Vector layout (indices):
+
 ```
+[ letters | haraka | pause | sifat | rules ]
+    L        12       3       12       N
+```
+
+Notes:
+- Long vowels (ا، و، ي، ى، آ، ٰ) get implicit `madd` if no explicit haraka is present.
+- Pause marks apply to the preceding letter; non-final phonemes in a word are forced to “do not stop”.
+- End of āyah auto-sets pause category 4.
+- `encoding_to_string` supports `style="short"` (symbols only, aligned columns) and `style="long"` (labeled).
 
 ---
 
