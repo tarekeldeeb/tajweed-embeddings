@@ -4,7 +4,7 @@
    ✅ Done. `sifat.json` / `TajweedEmbedder.letters` now include Qur’ān glyphs (hamzat‑waṣl, dagger alif, maddah forms, small waw/ya, etc.) and tajwīd markers. Aliases added for glyph variants.
 
 2. **Realign tajwīd rule spans for normalized text**  
-   🔄 Still pending. `_apply_rule_spans` indexes raw text; offsets can drift when glyphs are skipped/aliased. Normalize/align spans to the filtered sequence.
+   ✅ Done. `_apply_rule_spans` now maps spans to the normalized/filtered letter sequence so rules stay aligned when glyphs are skipped or aliased.
 
 3. **Preserve multiple harakāt (shadda + vowel)**  
    ✅ Done. Haraka slice expanded; shadda+vowel combos are explicit states; tanwīn and alternate sukūn handled; pause slice added.

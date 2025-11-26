@@ -304,14 +304,30 @@ class TajweedEmbedder:
     # ------------------------------------------------------------------
     # RULE FLAGS
     # ------------------------------------------------------------------
-    def _apply_rule_spans(self, sura, ayah, text_len: int) -> List[np.ndarray]:
+    def _apply_rule_spans(self, sura, ayah, chars: List[str]) -> List[np.ndarray]:
         """
-        Returns a list of length `text_len`.
-        Each element is a rule one-hot vector of length `n_rules` for that character index.
+        Returns rule flags aligned to the filtered character sequence (letters only).
+        Each element is a rule one-hot vector of length `n_rules` for that filtered index.
         """
-        flags = [np.zeros(self.n_rules, dtype=float) for _ in range(text_len)]
+        raw_len = len(chars)
 
-        if self.n_rules == 0 or text_len == 0:
+        # Map raw indices → filtered indices (letters after normalization)
+        raw_to_filtered: List[int] = [-1] * raw_len
+        filtered_len = 0
+        for i, ch in enumerate(chars):
+            norm_ch = self.char_aliases.get(ch, ch)
+            if norm_ch in self.letters:
+                raw_to_filtered[i] = filtered_len
+                filtered_len += 1
+            elif i > 0 and (
+                norm_ch in self.diacritic_chars or norm_ch in self.pause_chars
+            ):
+                # Allow diacritics/markers to attach to the preceding kept glyph
+                raw_to_filtered[i] = raw_to_filtered[i - 1]
+
+        flags = [np.zeros(self.n_rules, dtype=float) for _ in range(filtered_len)]
+
+        if self.n_rules == 0 or filtered_len == 0:
             return flags
 
         key = (str(sura), str(ayah))
@@ -328,10 +344,13 @@ class TajweedEmbedder:
 
             # clamp to text length
             start = max(0, start)
-            end = min(text_len, end)
+            end = min(raw_len, end)
 
-            for i in range(start, end):
-                flags[i][idx_rule] = 1.0
+            for raw_idx in range(start, end):
+                f_idx = raw_to_filtered[raw_idx]
+                if f_idx < 0 or f_idx >= filtered_len:
+                    continue
+                flags[f_idx][idx_rule] = 1.0
 
         return flags
 
@@ -355,17 +374,23 @@ class TajweedEmbedder:
         # 1) Get text according to parameters
         text = self.get_text(sura, ayah, subtext)
         chars = list(text)
+        filtered_len = sum(
+            1 for ch in chars if self.char_aliases.get(ch, ch) in self.letters
+        )
 
         # 2) Compute rule flags only if we have a specific ayah
         if ayah is not None:
-            rule_flags = self._apply_rule_spans(sura, ayah, len(chars))
+            rule_flags = self._apply_rule_spans(sura, ayah, chars)
         else:
-            rule_flags = [np.zeros(self.n_rules, dtype=float) for _ in range(len(chars))]
+            rule_flags = [
+                np.zeros(self.n_rules, dtype=float) for _ in range(filtered_len)
+            ]
 
         embeddings: List[np.ndarray] = []
         last_vec: Optional[np.ndarray] = None
         last_base: Optional[str] = None
         last_has_shadda: bool = False
+        filtered_idx = 0
 
         for i, ch in enumerate(chars):
             # Normalize glyph aliases
@@ -420,10 +445,10 @@ class TajweedEmbedder:
             ] = np.array(sifat_values, dtype=float)
 
             # Rule flags for this character
-            if self.n_rules and i < len(rule_flags):
+            if self.n_rules and filtered_idx < len(rule_flags):
                 vec[
                     self.idx_rule_start : self.idx_rule_start + self.n_rules
-                ] = rule_flags[i]
+                ] = rule_flags[filtered_idx]
             # Inline tajweed rule markers on the character itself
             if ch in self.marker_rule_map:
                 rname = self.marker_rule_map[ch]
@@ -433,6 +458,7 @@ class TajweedEmbedder:
 
             embeddings.append(vec)
             last_vec = vec
+            filtered_idx += 1
 
         # If no embeddings at all but text is non-empty (e.g., non-Arabic text),
         # return a single zero-vector so tests like "subtext not found" still see > 0 length.
