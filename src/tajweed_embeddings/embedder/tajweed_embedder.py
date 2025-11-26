@@ -76,6 +76,7 @@ class TajweedEmbedder:
             "fathatan",
             "kasratan",
             "dammatan",
+            "madd",
         ]
         self.harakat_state_labels: List[str] = [
             "fatha",
@@ -89,6 +90,7 @@ class TajweedEmbedder:
             "fathatan",
             "kasratan",
             "dammatan",
+            "madd",
         ]
         self.n_harakat: int = len(self.harakat_states)
         self.harakat_vectors: Dict[str, np.ndarray] = {
@@ -129,6 +131,7 @@ class TajweedEmbedder:
             "fathatan": ["ً"],
             "kasratan": ["ٍ"],
             "dammatan": ["ٌ"],
+            "madd": [],
         }
         # Backwards compatibility: list of raw diacritic characters
         self.harakat_chars: List[str] = list(self.diacritic_chars)
@@ -140,6 +143,15 @@ class TajweedEmbedder:
                 self.default_haraka,
             )
             for ch in self.harakat_chars
+        }
+        # Long vowel letters often lack explicit haraka marks but should be voiced
+        self.long_vowel_defaults: Dict[str, str] = {
+            "ا": "madd",  # alif (including madd ā)
+            "آ": "madd",
+            "ى": "madd",  # alif maqsurah
+            "و": "madd",  # long uu/o
+            "ي": "madd",  # long ii/ee
+            "ٰ": "madd",  # dagger alif mark treated as madd carrier
         }
 
         # Pause slice: 3 bits [present, stop_preferred, stop_mandatory]
@@ -427,11 +439,17 @@ class TajweedEmbedder:
             vec[
                 self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
             ] = self.default_haraka
+            # Long vowel letters may omit haraka marks; set an implicit vowel state
+            fallback_base = self.long_vowel_defaults.get(ch)
+            if fallback_base:
+                vec[
+                    self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
+                ] = self.harakat_vectors.get(fallback_base, self.default_haraka)
+                last_base = fallback_base
             # Default pause slice (may be overwritten by following pause mark)
             vec[
                 self.idx_pause_start : self.idx_pause_start + self.n_pause
             ] = self.pause_default
-            last_base = None
             last_has_shadda = False
 
             # Sifāt
@@ -528,7 +546,15 @@ class TajweedEmbedder:
         if encoding.ndim != 1 or encoding.shape[0] != self.embedding_dim:
             raise ValueError("Encoding must be a 1-D vector matching embedding_dim")
 
-        parts: List[str] = []
+        def _format_parts(items: List[tuple[str, str]]) -> str:
+            if not items:
+                return ""
+            label_width = max(len(label) for label, _ in items)
+            return " | ".join(
+                f"{label.rjust(label_width)}: {value}" for label, value in items
+            )
+
+        parts: List[tuple[str, str]] = []
 
         # Letter
         letter_slice = encoding[: self.n_letters]
@@ -536,7 +562,7 @@ class TajweedEmbedder:
         if letter_slice.size:
             idx = int(np.argmax(letter_slice))
             letter = self.index_to_letter.get(idx, "")
-        parts.append(f"Letter: {letter or '(unknown)'}")
+        parts.append(("Letter", letter or "(unknown)"))
 
         # Haraka
         haraka_slice = encoding[
@@ -547,7 +573,14 @@ class TajweedEmbedder:
             idx = int(np.argmax(haraka_slice))
             if 0 <= idx < len(self.harakat_state_labels):
                 haraka_name = self.harakat_state_labels[idx]
-        parts.append(f"Haraka: {haraka_name or '(none)'}")
+        # Implicit long vowels: letter carries vowel even if haraka slice is empty
+        if not haraka_name and letter in self.long_vowel_defaults:
+            haraka_name = self.long_vowel_defaults[letter]
+        parts.append(("Haraka", haraka_name or "(none)"))
+
+        # If there is no haraka (silent phoneme), skip further vector details
+        if not haraka_name:
+            return _format_parts(parts)
 
         # Pause info
         pause_slice = encoding[
@@ -565,7 +598,7 @@ class TajweedEmbedder:
                     pause_desc = "stop-preferred"
                 else:
                     pause_desc = "present"
-        parts.append(f"Pause: {pause_desc or '(none)'}")
+        parts.append(("Pause", pause_desc or "(none)"))
 
         # Sifat values
         sifat_slice = encoding[
@@ -578,9 +611,9 @@ class TajweedEmbedder:
                 if float(value) != 0.0
             ]
             if sifat_pairs:
-                parts.append("Sifat: " + ", ".join(sifat_pairs))
+                parts.append(("Sifat", ", ".join(sifat_pairs)))
         else:
-            parts.append("Sifat: (unavailable)")
+            parts.append(("Sifat", "(unavailable)"))
 
         # Tajwid rules (list active ones)
         rules_slice = encoding[self.idx_rule_start :]
@@ -591,11 +624,11 @@ class TajweedEmbedder:
                 if value > 0
             ]
             if active_rules:
-                parts.append("Rules: " + ", ".join(active_rules))
+                parts.append(("Rules", ", ".join(active_rules)))
         else:
-            parts.append("Rules: (unavailable)")
+            parts.append(("Rules", "(unavailable)"))
 
-        return " | ".join(parts)
+        return _format_parts(parts)
 
     # ------------------------------------------------------------------
     # COMPARISON & SCORE
