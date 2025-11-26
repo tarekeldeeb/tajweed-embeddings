@@ -2,6 +2,7 @@
 
 import json
 from importlib.resources import files
+import unicodedata
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -132,6 +133,21 @@ class TajweedEmbedder:
             "kasratan": ["ٍ"],
             "dammatan": ["ٌ"],
             "madd": [],
+        }
+        # Concise symbols for display (encoding_to_string)
+        self.haraka_symbol: Dict[str, str] = {
+            "fatha": "^",
+            "fatha_shadda": "ώ",
+            "kasra": "‿",
+            "kasra_shadda": "ῳ",
+            "damma": "و",
+            "damma_shadda": "ὠ",
+            "sukun": "°",
+            "sukun_zero": "0",
+            "fathatan": "^^",
+            "kasratan": "__",
+            "dammatan": "oo",
+            "madd": "~",
         }
         # Backwards compatibility: list of raw diacritic characters
         self.harakat_chars: List[str] = list(self.diacritic_chars)
@@ -572,28 +588,15 @@ class TajweedEmbedder:
 
         return "".join(chars)
 
-    def encoding_to_string(self, encoding) -> str:
+    def encoding_to_string(self, encoding, style: str = "short") -> str:
         """
-        Render a single embedding vector as a readable description that lists
-        the decoded letter, haraka (if any), numeric ṣifāt values, and active
-        tajwīd rules. Useful for debugging embeddings interactively.
+        Render embeddings in either compact ("short") or descriptive ("long") form.
+
+        - short: values only, aligned with fixed column widths when rendering sequences.
+        - long : labeled, descriptive output (previous default).
         """
-        # Allow sequences of encodings for convenience (e.g., direct output of text_to_embedding)
-        if isinstance(encoding, (list, tuple)):
-            if not encoding:
-                raise ValueError("Encoding sequence is empty")
-            formatted = []
-            for idx, item in enumerate(encoding):
-                formatted.append(f"[{idx}] {self.encoding_to_string(item)}")
-            return "\n".join(formatted)
-
-        if encoding is None:
-            raise ValueError("Encoding must be provided")
-
-        encoding = np.asarray(encoding, dtype=float)
-
-        if encoding.ndim != 1 or encoding.shape[0] != self.embedding_dim:
-            raise ValueError("Encoding must be a 1-D vector matching embedding_dim")
+        if style not in ("short", "long"):
+            raise ValueError("style must be 'short' or 'long'")
 
         def _format_parts(items: List[tuple[str, str]]) -> str:
             if not items:
@@ -603,78 +606,190 @@ class TajweedEmbedder:
                 f"{label.rjust(label_width)}: {value}" for label, value in items
             )
 
-        parts: List[tuple[str, str]] = []
+        def _extract_values(enc) -> dict:
+            """Return decoded components for formatting."""
+            enc = np.asarray(enc, dtype=float)
+            if enc.ndim != 1 or enc.shape[0] != self.embedding_dim:
+                raise ValueError("Encoding must be a 1-D vector matching embedding_dim")
 
-        # Letter
-        letter_slice = encoding[: self.n_letters]
-        letter = ""
-        if letter_slice.size:
-            idx = int(np.argmax(letter_slice))
-            letter = self.index_to_letter.get(idx, "")
-        parts.append(("Letter", letter or "(unknown)"))
+            # Letter
+            letter_slice = enc[: self.n_letters]
+            letter = ""
+            if letter_slice.size:
+                idx = int(np.argmax(letter_slice))
+                letter = self.index_to_letter.get(idx, "")
 
-        # Haraka
-        haraka_slice = encoding[
-            self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
-        ]
-        haraka_name = ""
-        if haraka_slice.size == self.n_harakat and np.max(haraka_slice) > 0:
-            idx = int(np.argmax(haraka_slice))
-            if 0 <= idx < len(self.harakat_state_labels):
-                haraka_name = self.harakat_state_labels[idx]
-        # Implicit long vowels: letter carries vowel even if haraka slice is empty
-        if not haraka_name and letter in self.long_vowel_defaults:
-            haraka_name = self.long_vowel_defaults[letter]
-        parts.append(("Haraka", haraka_name or "(none)"))
+            # Haraka
+            haraka_slice = enc[
+                self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
+            ]
+            haraka_state = None
+            haraka_name = ""
+            if haraka_slice.size == self.n_harakat and np.max(haraka_slice) > 0:
+                idx = int(np.argmax(haraka_slice))
+                haraka_state = self.index_to_haraka_state.get(idx)
+                haraka_name = self.harakat_state_labels[idx] if 0 <= idx < len(self.harakat_state_labels) else (haraka_state or "")
+            if not haraka_state and letter in self.long_vowel_defaults:
+                haraka_state = self.long_vowel_defaults[letter]
+                haraka_name = haraka_state
 
-        # If there is no haraka (silent phoneme), skip further vector details
-        if not haraka_name:
+            # Pause
+            pause_slice = enc[
+                self.idx_pause_start : self.idx_pause_start + self.n_pause
+            ]
+            pause_category = None
+            pause_value = ""
+            if pause_slice.size == self.n_pause:
+                bits = [int(b) for b in pause_slice[: self.n_pause]]
+                pause_category = (bits[0]) | (bits[1] << 1) | (bits[2] << 2)
+                if pause_category in self.pause_categories:
+                    pause_value = (
+                        self.pause_category_symbol.get(pause_category, str(pause_category))
+                        if style == "short"
+                        else self.pause_categories[pause_category]
+                    )
+                elif pause_category > 0:
+                    pause_value = f"pause_{pause_category}"
+
+            # Sifat
+            sifat_slice = enc[
+                self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
+            ]
+            sifat_values: List[str] = []
+            if sifat_slice.size == self.n_sifat:
+                sifat_values = [
+                    name
+                    for name, value in zip(self.sifat_keys, sifat_slice)
+                    if float(value) != 0.0
+                ]
+
+            # Rules
+            rules_slice = enc[self.idx_rule_start :]
+            active_rules: List[str] = []
+            if rules_slice.size == self.n_rules and self.n_rules > 0:
+                active_rules = [
+                    self.rule_names[i]
+                    for i, value in enumerate(rules_slice)
+                    if value > 0
+                ]
+
+            return {
+                "letter": letter,
+                "haraka_state": haraka_state,
+                "haraka_name": haraka_name,
+                "pause_category": pause_category,
+                "pause_value": pause_value,
+                "sifat_values": sifat_values,
+                "rules": active_rules,
+            }
+
+        def _disp_width(txt: str) -> int:
+            """Approximate display width treating combining chars as zero-width."""
+            if not txt:
+                return 0
+            return sum(0 if unicodedata.combining(ch) else 1 for ch in txt)
+
+        def _ljust_disp(txt: str, width: int) -> str:
+            pad = max(0, width - _disp_width(txt))
+            return txt + (" " * pad)
+
+        def _dim(txt: str) -> str:
+            return f"\x1b[90m{txt}\x1b[0m" if txt else txt
+
+        def _render_short(enc) -> tuple[list[str], bool]:
+            decoded = _extract_values(enc)
+            letter_val = decoded["letter"] or "-"
+            if letter_val and unicodedata.combining(letter_val):
+                # Prefix a tatweel to give combining marks display width
+                letter_val = f"ـ{letter_val}"
+            haraka_state = decoded["haraka_state"]
+            haraka_name = decoded["haraka_name"]
+            if haraka_state or haraka_name:
+                key = haraka_state or haraka_name
+                haraka_val = self.haraka_symbol.get(key, key)
+            else:
+                haraka_val = ""
+            pause_val = decoded["pause_value"] if decoded["pause_value"] else ""
+            sifat_vals = decoded["sifat_values"]
+            sifat_val = "/".join(s[:3] for s in sifat_vals) if sifat_vals else ""
+            rules = decoded["rules"]
+            rules_val = ", ".join(rules) if rules else ""
+            # Always return fixed columns: Letter, Haraka, Pause, Sifat, Rules
+            haraka_missing = not (haraka_state or haraka_name)
+            return [letter_val, haraka_val, pause_val, sifat_val, rules_val], haraka_missing
+
+        def _render_long(enc) -> str:
+            decoded = _extract_values(enc)
+            parts: List[tuple[str, str]] = []
+            parts.append(("Letter", decoded["letter"] or "(unknown)"))
+
+            haraka_display = decoded["haraka_name"] or decoded["haraka_state"] or "(none)"
+            parts.append(("Haraka", haraka_display))
+
+            # If silent, skip remaining details for long style
+            if not decoded["haraka_state"] and not decoded["haraka_name"]:
+                return _format_parts(parts)
+
+            pause_desc = decoded["pause_value"] or "(none)"
+            parts.append(("Pause", pause_desc))
+
+            sifat_vals = decoded["sifat_values"]
+            if sifat_vals:
+                parts.append(("Sifat", ", ".join(sifat_vals)))
+
+            rules = decoded["rules"]
+            if rules:
+                parts.append(("Rules", ", ".join(rules)))
+
+            if not decoded["haraka_state"] and not decoded["haraka_name"]:
+                parts = [
+                    (label, value if label not in ("Pause", "Sifat", "Rules") else f"\x1b[90m{value}\x1b[0m")
+                    for label, value in parts
+                ]
+
             return _format_parts(parts)
 
-        # Pause info
-        pause_slice = encoding[
-            self.idx_pause_start : self.idx_pause_start + self.n_pause
-        ]
-        pause_desc = ""
-        if pause_slice.size == self.n_pause:
-            bits = [int(b) for b in pause_slice[: self.n_pause]]
-            category = (bits[0]) | (bits[1] << 1) | (bits[2] << 2)
-            if category in self.pause_categories:
-                symbol = self.pause_category_symbol.get(category, "")
-                pause_desc = symbol or self.pause_categories[category]
-            elif category > 0:
-                pause_desc = f"pause_{category}"
-        parts.append(("Pause", pause_desc or "(none)"))
+        # Sequence handling with alignment for short style
+        if isinstance(encoding, (list, tuple)):
+            if not encoding:
+                raise ValueError("Encoding sequence is empty")
+            if style == "short":
+                rows_data = [_render_short(item) for item in encoding]
+                rows = [r for r, _ in rows_data]
+                col_widths = [
+                    max(1, max(_disp_width(row[i]) for row in rows))
+                    for i in range(len(rows[0]))
+                ]
+                idx_width = len(str(len(rows) - 1))
+                lines = []
+                for idx, (row, haraka_missing) in enumerate(rows_data):
+                    padded = [_ljust_disp(val, col_widths[i]) for i, val in enumerate(row)]
+                    if haraka_missing:
+                        for i in range(2, len(padded)):
+                            padded[i] = _dim(padded[i])
+                    lines.append(f"[{str(idx).rjust(idx_width)}] " + " | ".join(padded))
+                return "\n".join(lines)
+            else:
+                formatted = []
+                for idx, item in enumerate(encoding):
+                    formatted.append(f"[{idx}] {self.encoding_to_string(item, style=style)}")
+                return "\n".join(formatted)
 
-        # Sifat values
-        sifat_slice = encoding[
-            self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
-        ]
-        if sifat_slice.size == self.n_sifat:
-            sifat_pairs = [
-                name
-                for name, value in zip(self.sifat_keys, sifat_slice)
-                if float(value) != 0.0
+        # Single encoding
+        if style == "short":
+            row, haraka_missing = _render_short(encoding)
+            rows = [row]
+            col_widths = [
+                max(1, max(_disp_width(row[i]) for row in rows))
+                for i in range(len(rows[0]))
             ]
-            if sifat_pairs:
-                parts.append(("Sifat", ", ".join(sifat_pairs)))
-        else:
-            parts.append(("Sifat", "(unavailable)"))
-
-        # Tajwid rules (list active ones)
-        rules_slice = encoding[self.idx_rule_start :]
-        if rules_slice.size == self.n_rules and self.n_rules > 0:
-            active_rules = [
-                self.rule_names[i]
-                for i, value in enumerate(rules_slice)
-                if value > 0
-            ]
-            if active_rules:
-                parts.append(("Rules", ", ".join(active_rules)))
-        else:
-            parts.append(("Rules", "(unavailable)"))
-
-        return _format_parts(parts)
+            idx_width = len(str(len(rows) - 1))
+            padded = [_ljust_disp(val, col_widths[i]) for i, val in enumerate(row)]
+            if haraka_missing:
+                for i in range(2, len(padded)):
+                    padded[i] = _dim(padded[i])
+            return f"[{str(0).rjust(idx_width)}] " + " | ".join(padded)
+        return _render_long(encoding)
 
     # ------------------------------------------------------------------
     # COMPARISON & SCORE
