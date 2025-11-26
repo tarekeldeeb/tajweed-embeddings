@@ -154,17 +154,36 @@ class TajweedEmbedder:
             "ٰ": "madd",  # dagger alif mark treated as madd carrier
         }
 
-        # Pause slice: 3 bits [present, stop_preferred, stop_mandatory]
+        # Pause slice: 3-bit code (binary) for stop categories:
+        # 0=Do not stop, 1=Seli, 2=Jaiz, 3=Taanoq, 4=Qeli or āyah end, 5=Sakta, 6=Lazem
         self.n_pause: int = 3
         self.pause_default: np.ndarray = np.zeros(self.n_pause, dtype=float)
-        self.pause_map: Dict[str, Tuple[float, float]] = {
-            "ۖ": (0.0, 0.0),  # Seli (continue preferred)
-            "ۗ": (1.0, 0.0),  # Qeli (stop preferred)
-            "ۚ": (0.0, 0.0),  # Jaiz (optional)
-            "ۛ": (0.0, 0.0),  # Taanoq (paired dots)
-            "ۘ": (0.0, 1.0),  # Lazem (mandatory)
-            "ۜ": (0.0, 1.0),  # Sakta (brief mandatory pause)
-            "ۙ": (0.0, 0.0),  # Mamnoo (do not stop)
+        self.pause_categories: Dict[int, str] = {
+            0: "do_not_stop",
+            1: "seli",
+            2: "jaiz",
+            3: "taanoq",
+            4: "qeli_or_ayah_end",
+            5: "sakta",
+            6: "lazem",
+        }
+        self.pause_category_symbol: Dict[int, str] = {
+            0: "-",
+            1: "↦",
+            2: "≈",
+            3: "⋀",
+            4: "⏹",
+            5: "˽",
+            6: "⛔",
+        }
+        self.pause_char_category: Dict[str, int] = {
+            "ۖ": 1,  # Seli (continue preferred)
+            "ۗ": 4,  # Qeli (stop preferred)
+            "ۚ": 2,  # Jaiz (optional)
+            "ۛ": 3,  # Taanoq (paired dots)
+            "ۘ": 6,  # Lazem (mandatory)
+            "ۜ": 5,  # Sakta (brief mandatory pause)
+            "ۙ": 0,  # Mamnoo (do not stop)
         }
 
         # Ṣifāt: fixed order of 12 features per letter
@@ -268,14 +287,18 @@ class TajweedEmbedder:
             return "sukun", False
         return state, False
 
+    def _encode_pause_bits(self, category: int) -> np.ndarray:
+        """Encode pause category (0-7) into 3-bit binary vector."""
+        category = max(0, min(7, int(category)))
+        return np.array(
+            [(category >> 0) & 1, (category >> 1) & 1, (category >> 2) & 1],
+            dtype=float,
+        )
+
     def _pause_vector(self, ch: str) -> np.ndarray:
-        """Return pause slice vector [present, stop_preferred, stop_mandatory]."""
-        vec = np.zeros(self.n_pause, dtype=float)
-        pref, mand = self.pause_map.get(ch, (0.0, 0.0))
-        vec[0] = 1.0  # pause present
-        vec[1] = pref
-        vec[2] = mand
-        return vec
+        """Return pause slice 3-bit code for a pause glyph."""
+        category = self.pause_char_category.get(ch, 0)
+        return self._encode_pause_bits(category)
 
     # ------------------------------------------------------------------
     # TEXT RETRIEVAL (SURA / AYAH / SUBTEXT)
@@ -386,9 +409,22 @@ class TajweedEmbedder:
         # 1) Get text according to parameters
         text = self.get_text(sura, ayah, subtext)
         chars = list(text)
-        filtered_len = sum(
-            1 for ch in chars if self.char_aliases.get(ch, ch) in self.letters
-        )
+        filtered_len = 0
+        word_last_indices: set[int] = set()
+        current_word: List[int] = []
+        for ch in chars:
+            norm_ch = self.char_aliases.get(ch, ch)
+            if norm_ch in self.letters:
+                current_word.append(filtered_len)
+                filtered_len += 1
+            elif norm_ch in self.diacritic_chars or norm_ch in self.pause_chars:
+                continue  # diacritics/markers do not break words
+            else:
+                if current_word:
+                    word_last_indices.add(current_word[-1])
+                    current_word = []
+        if current_word:
+            word_last_indices.add(current_word[-1])
 
         # 2) Compute rule flags only if we have a specific ayah
         if ayah is not None:
@@ -478,8 +514,21 @@ class TajweedEmbedder:
             last_vec = vec
             filtered_idx += 1
 
+        # Zero out pause bits for non-final phonemes inside a word
+        for idx, vec in enumerate(embeddings):
+            if idx not in word_last_indices:
+                vec[
+                    self.idx_pause_start : self.idx_pause_start + self.n_pause
+                ] = self.pause_default
+
         # If no embeddings at all but text is non-empty (e.g., non-Arabic text),
         # return a single zero-vector so tests like "subtext not found" still see > 0 length.
+        if ayah is not None and subtext is None and embeddings:
+            # Implicit end-of-ayah pause (mandatory stop)
+            embeddings[-1][
+                self.idx_pause_start : self.idx_pause_start + self.n_pause
+            ] = self._encode_pause_bits(4)
+
         if not embeddings and text:
             embeddings.append(np.zeros(self.embedding_dim, dtype=float))
 
@@ -587,17 +636,14 @@ class TajweedEmbedder:
             self.idx_pause_start : self.idx_pause_start + self.n_pause
         ]
         pause_desc = ""
-        if pause_slice.size == self.n_pause and np.max(pause_slice) > 0:
-            present = pause_slice[0] > 0
-            pref = pause_slice[1] > 0
-            mand = pause_slice[2] > 0
-            if present:
-                if mand:
-                    pause_desc = "mandatory"
-                elif pref:
-                    pause_desc = "stop-preferred"
-                else:
-                    pause_desc = "present"
+        if pause_slice.size == self.n_pause:
+            bits = [int(b) for b in pause_slice[: self.n_pause]]
+            category = (bits[0]) | (bits[1] << 1) | (bits[2] << 2)
+            if category in self.pause_categories:
+                symbol = self.pause_category_symbol.get(category, "")
+                pause_desc = symbol or self.pause_categories[category]
+            elif category > 0:
+                pause_desc = f"pause_{category}"
         parts.append(("Pause", pause_desc or "(none)"))
 
         # Sifat values
