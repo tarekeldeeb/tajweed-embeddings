@@ -116,3 +116,4 @@ def test_randomized_arabic_fuzzing(emb):
 
     expected = count_letters(emb, seq)
     assert len(out) == expected
+"""Stress tests for long sequences and repeated embeddings."""

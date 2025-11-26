@@ -122,3 +122,4 @@ def test_rule_markers_set_rule_flags(emb):
         vec = out[0]
         ri = emb.rule_to_index[rule]
         assert vec[emb.idx_rule_start + ri] == 1.0
+"""Special-case behaviors (pause bits, unknowns, etc.)."""

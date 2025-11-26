@@ -62,3 +62,4 @@ def test_encoding_to_string_dagger_alif_is_madd(emb):
     out = emb.encoding_to_string(vec)
 
     assert "~" in out
+"""String formatting tests for encoding_to_string."""

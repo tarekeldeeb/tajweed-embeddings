@@ -151,3 +151,4 @@ def test_compare_handles_empty_sequences(emb):
     assert isinstance(c, float)
     assert np.isfinite(c)
     assert_norm(c)
+"""Similarity and scoring behavior tests."""

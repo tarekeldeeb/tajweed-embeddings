@@ -36,3 +36,11 @@ def test_pause_glyph_categories(emb, mark, expected):
     """Pause glyphs map to the correct 3-bit category."""
     vecs = emb.text_to_embedding(1, 1, f"بِ{mark}")
     assert _pause_category(vecs[-1], emb) == expected
+
+
+def test_full_surah_end_of_ayah_pauses(emb):
+    """Full-sūrah embeddings should carry end-of-ayah pauses on each boundary."""
+    vecs = emb.text_to_embedding(1)
+    categories = [_pause_category(v, emb) for v in vecs]
+    assert categories.count(4) == len(emb.quran["1"])
+"""Pause category encoding tests."""

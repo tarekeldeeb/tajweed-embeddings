@@ -174,4 +174,12 @@ def test_rule_flags_alignment(emb):
         rules = v[emb.idx_rule_start:]
         assert len(rules) == emb.n_rules
         assert rules.ndim == 1
+
+
+def test_full_surah_has_rule_flags(emb):
+    """Full-sūrah embedding should include tajwīd rules (not all zeros)."""
+    out = emb.text_to_embedding(1)
+    assert len(out) > 0
+    assert any(vec[emb.idx_rule_start:].sum() > 0 for vec in out)
     
+"""Core tests for TajweedEmbedder embeddings and reconstruction."""

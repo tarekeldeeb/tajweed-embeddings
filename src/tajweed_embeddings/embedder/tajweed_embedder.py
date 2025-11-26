@@ -45,18 +45,6 @@ class TajweedEmbedder:
             "۫": "ishmam",
             "ۣ": "optional_seen",
         }
-
-        # Letters are taken from sifat keys
-        self.letters: List[str] = sorted(
-            ch for ch in self.sifat.keys() if ch not in self.pause_chars
-        )
-        self.letter_to_index: Dict[str, int] = {
-            ch: i for i, ch in enumerate(self.letters)
-        }
-        self.index_to_letter: Dict[int, str] = {
-            i: ch for ch, i in self.letter_to_index.items()
-        }
-        self.n_letters: int = len(self.letters)
         # Character aliases: map stylistic glyphs to canonical letters
         self.char_aliases: Dict[str, str] = {
             "ۨ": "ن",  # small high noon
@@ -64,190 +52,64 @@ class TajweedEmbedder:
             "ۭ": "ۢ",  # small low meem -> iqlab indicator
         }
 
-        # Harakāt: explicit states incl. shadda+vowel combos, tanwīn, and alt sukūn
-        self.harakat_states: List[str] = [
-            "fatha",
-            "fatha_shadda",
-            "kasra",
-            "kasra_shadda",
-            "damma",
-            "damma_shadda",
-            "sukun",
-            "sukun_zero",
-            "fathatan",
-            "kasratan",
-            "dammatan",
-            "madd",
-        ]
-        self.harakat_state_labels: List[str] = [
-            "fatha",
-            "fatha+shadda",
-            "kasra",
-            "kasra+shadda",
-            "damma",
-            "damma+shadda",
-            "sukun",
-            "sukun_zero",
-            "fathatan",
-            "kasratan",
-            "dammatan",
-            "madd",
-        ]
-        self.n_harakat: int = len(self.harakat_states)
-        self.harakat_vectors: Dict[str, np.ndarray] = {
-            state: np.eye(self.n_harakat, dtype=float)[i]
-            for i, state in enumerate(self.harakat_states)
-        }
-        self.index_to_haraka_state: Dict[int, str] = {
-            i: state for i, state in enumerate(self.harakat_states)
-        }
-        self.default_haraka: np.ndarray = np.zeros(self.n_harakat, dtype=float)
-        self.shadda_char: str = "ّ"
-        self.alt_sukun_char: str = "۠"
-        self.haraka_base_map: Dict[str, str] = {
-            "َ": "fatha",
-            "ِ": "kasra",
-            "ُ": "damma",
-            "ْ": "sukun",
-            self.alt_sukun_char: "sukun_zero",
-            "۟": "sukun",  # rounded zero mark treated as plain sukun
-            "ً": "fathatan",
-            "ٍ": "kasratan",
-            "ٌ": "dammatan",
-            "ﹰ": "fathatan",  # Arabic Fathatan isolated form
-            "ﹱ": "fathatan",  # Tatweel with Fathatan above
-            "ﹲ": "dammatan",  # Arabic Dammatan isolated form
-            "ﹴ": "kasratan",  # Arabic Kasratan isolated form
-        }
-        self.diacritic_chars = set(self.haraka_base_map.keys()) | {self.shadda_char}
-        self.haraka_state_to_chars: Dict[str, List[str]] = {
-            "fatha": ["َ"],
-            "fatha_shadda": ["ّ", "َ"],
-            "kasra": ["ِ"],
-            "kasra_shadda": ["ّ", "ِ"],
-            "damma": ["ُ"],
-            "damma_shadda": ["ّ", "ُ"],
-            "sukun": ["ْ"],
-            "sukun_zero": [self.alt_sukun_char],
-            "fathatan": ["ً"],
-            "kasratan": ["ٍ"],
-            "dammatan": ["ٌ"],
-            "madd": [],
-        }
-        # Concise symbols for display (encoding_to_string)
-        self.haraka_symbol: Dict[str, str] = {
-            "fatha": "^",
-            "fatha_shadda": "ώ",
-            "kasra": "‿",
-            "kasra_shadda": "ῳ",
-            "damma": "و",
-            "damma_shadda": "ὠ",
-            "sukun": "°",
-            "sukun_zero": "0",
-            "fathatan": "^^",
-            "kasratan": "__",
-            "dammatan": "oo",
-            "madd": "~",
-        }
-        # Backwards compatibility: list of raw diacritic characters
-        self.harakat_chars: List[str] = list(self.diacritic_chars)
-        self.harakat: Dict[str, np.ndarray] = {
-            ch: self.harakat_vectors.get(
-                self._compose_haraka_state(
-                    self.haraka_base_map.get(ch), ch == self.shadda_char
-                ),
-                self.default_haraka,
-            )
-            for ch in self.harakat_chars
-        }
-        # Long vowel letters often lack explicit haraka marks but should be voiced
-        self.long_vowel_defaults: Dict[str, str] = {
-            "ا": "madd",  # alif (including madd ā)
-            "آ": "madd",
-            "ى": "madd",  # alif maqsurah
-            "و": "madd",  # long uu/o
-            "ي": "madd",  # long ii/ee
-            "ٰ": "madd",  # dagger alif mark treated as madd carrier
-        }
+        # Component helpers
+        from .letters_embedder import LettersEmbedder
+        from .harakat_embedder import HarakatEmbedder
+        from .sifat_embedder import SifatEmbedder
+        from .tajweed_rules_embedder import TajweedRulesEmbedder
 
-        # Pause slice: 3-bit code (binary) for stop categories:
-        # 0=Do not stop, 1=Seli, 2=Jaiz, 3=Taanoq, 4=Qeli or āyah end, 5=Sakta, 6=Lazem
-        self.n_pause: int = 3
-        self.pause_default: np.ndarray = np.zeros(self.n_pause, dtype=float)
-        self.pause_categories: Dict[int, str] = {
-            0: "do_not_stop",
-            1: "seli",
-            2: "jaiz",
-            3: "taanoq",
-            4: "qeli_or_ayah_end",
-            5: "sakta",
-            6: "lazem",
-        }
-        self.pause_category_symbol: Dict[int, str] = {
-            0: "-",
-            1: "↦",
-            2: "≈",
-            3: "⋀",
-            4: "⏹",
-            5: "˽",
-            6: "⛔",
-        }
-        self.pause_char_category: Dict[str, int] = {
-            "ۖ": 1,  # Seli (continue preferred)
-            "ۗ": 4,  # Qeli (stop preferred)
-            "ۚ": 2,  # Jaiz (optional)
-            "ۛ": 3,  # Taanoq (paired dots)
-            "ۘ": 6,  # Lazem (mandatory)
-            "ۜ": 5,  # Sakta (brief mandatory pause)
-            "ۙ": 0,  # Mamnoo (do not stop)
-        }
+        self.letters_helper = LettersEmbedder(self.sifat, self.pause_chars)
+        self.haraka_helper = HarakatEmbedder()
+        self.sifat_embedder = SifatEmbedder()
+        self.tajweed_rules = TajweedRulesEmbedder(
+            self.rules,
+            self.marker_rule_map,
+            self.char_aliases,
+            self.letters_helper.letters,
+            self.haraka_helper.diacritic_chars,
+            self.pause_chars,
+        )
 
-        # Ṣifāt: fixed order of 12 features per letter
-        # Optimized ṣifāt encoding:
-        # - jahr / hams (1 bit)
-        # - shiddah / tawassut / rikhwah (2 bits, 3 states)
-        # - isti'la / istifal (1 bit)
-        # - infitah / itbaq (1 bit)
-        # - idhlaq / ismat (1 bit) [default 0 if absent in data]
-        self.sifat_components = [
-            {"name": "jahr_hams", "bits": 1, "true": "jahr", "false": "hams"},
-            {
-                "name": "strength",
-                "bits": 2,
-                "states": ["rikhwah", "tawassut", "shiddah"],
-            },
-            {"name": "isti'la", "bits": 1, "true": "isti'la", "false": "istifal"},
-            {"name": "infitah", "bits": 1, "true": "infitah", "false": "itbaq"},
-            {"name": "idhlaq", "bits": 1, "true": "idhlaq", "false": "ismat"},
-        ]
-        self.n_sifat: int = sum(comp["bits"] for comp in self.sifat_components)
+        # Expose commonly used attributes for backward compatibility
+        self.letters = self.letters_helper.letters
+        self.letter_to_index = self.letters_helper.letter_to_index
+        self.index_to_letter = self.letters_helper.index_to_letter
+        self.n_letters = self.letters_helper.n_letters
 
-        # Tajwīd rules: collect all rule names from annotations
-        rule_names_set = set()
-        for entry in self.rules:
-            anns = entry.get("annotations", [])
-            for ann in anns:
-                rn = ann.get("rule")
-                if rn:
-                    rule_names_set.add(rn)
-        # Include marker-driven rules even if absent from rules.json
-        rule_names_set.update(self.marker_rule_map.values())
-        self.rule_names: List[str] = sorted(rule_names_set)
-        self.n_rules: int = len(self.rule_names)
-        self.rule_to_index: Dict[str, int] = {
-            name: i for i, name in enumerate(self.rule_names)
-        }
+        self.harakat_states = self.haraka_helper.harakat_states
+        self.harakat_state_labels = self.haraka_helper.harakat_state_labels
+        self.n_harakat = self.haraka_helper.n_harakat
+        self.harakat_vectors = self.haraka_helper.harakat_vectors
+        self.index_to_haraka_state = self.haraka_helper.index_to_haraka_state
+        self.default_haraka = self.haraka_helper.default_haraka
+        self.shadda_char = self.haraka_helper.shadda_char
+        self.alt_sukun_char = self.haraka_helper.alt_sukun_char
+        self.haraka_base_map = self.haraka_helper.haraka_base_map
+        self.diacritic_chars = self.haraka_helper.diacritic_chars
+        self.haraka_state_to_chars = self.haraka_helper.haraka_state_to_chars
+        self.harakat_chars = self.haraka_helper.harakat_chars
+        self.harakat = self.haraka_helper.harakat
+        self.long_vowel_defaults = self.haraka_helper.long_vowel_defaults
+        self.haraka_symbol = self.haraka_helper.haraka_symbol
+        self._compose_haraka_state = self.haraka_helper.compose_haraka_state
 
-        # Index rules by (sura, ayah) → list of annotations
-        self.rules_index: Dict[Tuple[str, str], List[Dict]] = {}
-        for entry in self.rules:
-            sura = str(entry.get("surah") or entry.get("sura"))
-            ayah = str(entry.get("ayah"))
-            key = (sura, ayah)
-            anns = entry.get("annotations", [])
-            if not isinstance(anns, list):
-                continue
-            self.rules_index.setdefault(key, []).extend(anns)
+        self.n_pause = self.tajweed_rules.n_pause
+        self.pause_default = self.tajweed_rules.pause_default
+        self.pause_categories = self.tajweed_rules.pause_categories
+        self.pause_category_symbol = self.tajweed_rules.pause_category_symbol
+        self.pause_char_category = self.tajweed_rules.pause_char_category
+        self._encode_pause_bits = self.tajweed_rules.encode_pause_bits
+        self._pause_vector = self.tajweed_rules.pause_vector
+
+        self.n_sifat = self.sifat_embedder.n_sifat
+        self._encode_sifat = self.sifat_embedder.encode
+        self._decode_sifat = self.sifat_embedder.decode
+
+        self.rule_names = self.tajweed_rules.rule_names
+        self.n_rules = self.tajweed_rules.n_rules
+        self.rule_to_index = self.tajweed_rules.rule_to_index
+        self.rules_index = self.tajweed_rules.rules_index
+        self._apply_rule_spans = self.tajweed_rules.apply_rule_spans
 
         # Offsets inside embedding vector
         self.idx_haraka_start: int = self.n_letters
@@ -270,92 +132,6 @@ class TajweedEmbedder:
     def _load_json(package: str, name: str):
         path = files(package).joinpath(name)
         return json.loads(path.read_text(encoding="utf-8"))
-
-    @staticmethod
-    def _safe_float(v) -> float:
-        """Convert value to float, treating non-numeric commentary as 0."""
-        try:
-            return float(v)
-        except Exception:
-            return 0.0
-
-    def _encode_sifat(self, s_dict: Dict[str, float]) -> np.ndarray:
-        """Encode sifat dict into compact bit representation."""
-        vec = np.zeros(self.n_sifat, dtype=float)
-        pos = 0
-
-        # jahr vs hams
-        jahr = self._safe_float(s_dict.get("jahr", 0))
-        hams = self._safe_float(s_dict.get("hams", s_dict.get("hms", 0)))
-        vec[pos] = 1.0 if jahr > 0 else 0.0
-        pos += 1
-
-        # strength: rikhwah / tawassut / shiddah
-        shiddah = self._safe_float(s_dict.get("shiddah", 0))
-        tawassut = self._safe_float(s_dict.get("tawassut", 0))
-        rikhwah = self._safe_float(s_dict.get("rikhwah", 0))
-        state = 0
-        if shiddah > 0:
-            state = 2
-        elif tawassut > 0:
-            state = 1
-        elif rikhwah > 0:
-            state = 0
-        vec[pos] = state & 1
-        vec[pos + 1] = (state >> 1) & 1
-        pos += 2
-
-        # isti'la vs istifal
-        isti = self._safe_float(s_dict.get("isti'la", 0))
-        vec[pos] = 1.0 if isti > 0 else 0.0
-        pos += 1
-
-        # infitah vs itbaq
-        inf = self._safe_float(s_dict.get("infitah", 0))
-        itb = self._safe_float(s_dict.get("itbaq", 0))
-        vec[pos] = 1.0 if inf > 0 else 0.0  # closed if itbaq
-        pos += 1
-
-        # idhlaq vs ismat (data may omit; default 0)
-        idh = self._safe_float(s_dict.get("idhlaq", 0))
-        vec[pos] = 1.0 if idh > 0 else 0.0
-
-        return vec
-
-    def _decode_sifat(self, slice_vec: np.ndarray) -> List[str]:
-        """Decode compact sifat bits to human-readable labels."""
-        if slice_vec.size < self.n_sifat:
-            return []
-        pos = 0
-        labels: List[str] = []
-
-        # jahr / hams
-        jahr_bit = slice_vec[pos] > 0
-        labels.append("jahr" if jahr_bit else "hams")
-        pos += 1
-
-        # strength
-        state = int(slice_vec[pos]) | (int(slice_vec[pos + 1]) << 1)
-        strength_states = ["rikhwah", "tawassut", "shiddah"]
-        if 0 <= state < len(strength_states):
-            labels.append(strength_states[state])
-        pos += 2
-
-        # isti'la / istifal
-        isti_bit = slice_vec[pos] > 0
-        labels.append("isti'la" if isti_bit else "istifal")
-        pos += 1
-
-        # infitah / itbaq
-        inf_bit = slice_vec[pos] > 0
-        labels.append("infitah" if inf_bit else "itbaq")
-        pos += 1
-
-        # idhlaq / ismat
-        idh_bit = slice_vec[pos] > 0
-        labels.append("idhlaq" if idh_bit else "ismat")
-
-        return labels
 
     # ------------------------------------------------------------------
     # HARAKA HELPERS
@@ -512,130 +288,150 @@ class TajweedEmbedder:
         - Custom subtext: text_to_embedding(1, 1, "بِسْمِ")
         """
 
-        # 1) Get text according to parameters
-        text = self.get_text(sura, ayah, subtext)
-        chars = list(text)
-        filtered_len = 0
-        word_last_indices: set[int] = set()
-        current_word: List[int] = []
-        for ch in chars:
-            norm_ch = self.char_aliases.get(ch, ch)
-            if norm_ch in self.letters:
-                current_word.append(filtered_len)
-                filtered_len += 1
-            elif norm_ch in self.diacritic_chars or norm_ch in self.pause_chars:
-                continue  # diacritics/markers do not break words
+        def _embed_segment(
+            text: str,
+            sura_val,
+            ayah_val: Optional[int],
+            apply_rules: bool,
+            add_end_pause: bool,
+        ) -> List[np.ndarray]:
+            chars = list(text)
+            filtered_len = 0
+            word_last_indices: set[int] = set()
+            current_word: List[int] = []
+            for ch in chars:
+                norm_ch = self.char_aliases.get(ch, ch)
+                if norm_ch in self.letters:
+                    current_word.append(filtered_len)
+                    filtered_len += 1
+                elif norm_ch in self.diacritic_chars or norm_ch in self.pause_chars:
+                    continue
+                else:
+                    if current_word:
+                        word_last_indices.add(current_word[-1])
+                        current_word = []
+            if current_word:
+                word_last_indices.add(current_word[-1])
+
+            # Rule flags
+            if apply_rules and ayah_val is not None:
+                rule_flags = self._apply_rule_spans(sura_val, ayah_val, chars)
             else:
-                if current_word:
-                    word_last_indices.add(current_word[-1])
-                    current_word = []
-        if current_word:
-            word_last_indices.add(current_word[-1])
+                rule_flags = [
+                    np.zeros(self.n_rules, dtype=float) for _ in range(filtered_len)
+                ]
 
-        # 2) Compute rule flags only if we have a specific ayah
-        if ayah is not None:
-            rule_flags = self._apply_rule_spans(sura, ayah, chars)
-        else:
-            rule_flags = [
-                np.zeros(self.n_rules, dtype=float) for _ in range(filtered_len)
-            ]
+            embeddings: List[np.ndarray] = []
+            last_vec: Optional[np.ndarray] = None
+            last_base: Optional[str] = None
+            last_has_shadda: bool = False
+            filtered_idx = 0
 
-        embeddings: List[np.ndarray] = []
-        last_vec: Optional[np.ndarray] = None
-        last_base: Optional[str] = None
-        last_has_shadda: bool = False
-        filtered_idx = 0
+            for i, ch in enumerate(chars):
+                ch = self.char_aliases.get(ch, ch)
+                if ch not in self.letters:
+                    if last_vec is not None:
+                        if ch in self.diacritic_chars:
+                            if ch == self.shadda_char:
+                                last_has_shadda = True
+                            else:
+                                last_base = self.haraka_base_map.get(ch, last_base)
 
-        for i, ch in enumerate(chars):
-            # Normalize glyph aliases
-            ch = self.char_aliases.get(ch, ch)
-            # Non-letters: used only to attach harakāt/pause info to previous letter
-            if ch not in self.letters:
-                if last_vec is not None:
-                    if ch in self.diacritic_chars:
-                        if ch == self.shadda_char:
-                            last_has_shadda = True
-                        else:
-                            last_base = self.haraka_base_map.get(ch, last_base)
+                            state = self._compose_haraka_state(
+                                last_base, last_has_shadda
+                            )
+                            last_vec[
+                                self.idx_haraka_start : self.idx_haraka_start
+                                + self.n_harakat
+                            ] = self.harakat_vectors.get(
+                                state, self.default_haraka
+                            )
+                        elif ch in self.pause_chars:
+                            pause_vec = self._pause_vector(ch)
+                            last_vec[
+                                self.idx_pause_start : self.idx_pause_start
+                                + self.n_pause
+                            ] = pause_vec
+                    continue
 
-                        state = self._compose_haraka_state(last_base, last_has_shadda)
-                        last_vec[
-                            self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
-                        ] = self.harakat_vectors.get(state, self.default_haraka)
-                    elif ch in self.pause_chars:
-                        pause_vec = self._pause_vector(ch)
-                        last_vec[
-                            self.idx_pause_start : self.idx_pause_start + self.n_pause
-                        ] = pause_vec
-                # ignore all other non-letters (spaces, punctuation, etc.)
-                continue
+                vec = np.zeros(self.embedding_dim, dtype=float)
 
-            # Initialize vector
-            vec = np.zeros(self.embedding_dim, dtype=float)
+                letter_idx = self.letter_to_index[ch]
+                vec[letter_idx] = 1.0
 
-            # Letter one-hot
-            letter_idx = self.letter_to_index[ch]
-            vec[letter_idx] = 1.0
-
-            # Default haraka (may be overwritten by following diacritic)
-            vec[
-                self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
-            ] = self.default_haraka
-            # Long vowel letters may omit haraka marks; set an implicit vowel state
-            fallback_base = self.long_vowel_defaults.get(ch)
-            if fallback_base:
                 vec[
                     self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
-                ] = self.harakat_vectors.get(fallback_base, self.default_haraka)
-                last_base = fallback_base
-            # Default pause slice (may be overwritten by following pause mark)
-            vec[
-                self.idx_pause_start : self.idx_pause_start + self.n_pause
-            ] = self.pause_default
-            last_has_shadda = False
-
-            # Sifāt
-            s_entry = self.sifat.get(ch, {})
-            s_dict = s_entry.get("sifat", {}) if isinstance(s_entry, dict) else {}
-            vec[
-                self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
-            ] = self._encode_sifat(s_dict)
-
-            # Rule flags for this character
-            if self.n_rules and filtered_idx < len(rule_flags):
-                vec[
-                    self.idx_rule_start : self.idx_rule_start + self.n_rules
-                ] = rule_flags[filtered_idx]
-            # Inline tajweed rule markers on the character itself
-            if ch in self.marker_rule_map:
-                rname = self.marker_rule_map[ch]
-                ri = self.rule_to_index.get(rname)
-                if ri is not None:
-                    vec[self.idx_rule_start + ri] = 1.0
-
-            embeddings.append(vec)
-            last_vec = vec
-            filtered_idx += 1
-
-        # Zero out pause bits for non-final phonemes inside a word
-        for idx, vec in enumerate(embeddings):
-            if idx not in word_last_indices:
+                ] = self.default_haraka
+                fallback_base = self.long_vowel_defaults.get(ch)
+                if fallback_base:
+                    vec[
+                        self.idx_haraka_start : self.idx_haraka_start
+                        + self.n_harakat
+                    ] = self.harakat_vectors.get(fallback_base, self.default_haraka)
+                    last_base = fallback_base
                 vec[
                     self.idx_pause_start : self.idx_pause_start + self.n_pause
                 ] = self.pause_default
+                last_has_shadda = False
 
-        # If no embeddings at all but text is non-empty (e.g., non-Arabic text),
-        # return a single zero-vector so tests like "subtext not found" still see > 0 length.
-        if ayah is not None and subtext is None and embeddings:
-            # Implicit end-of-ayah pause (mandatory stop)
-            embeddings[-1][
-                self.idx_pause_start : self.idx_pause_start + self.n_pause
-            ] = self._encode_pause_bits(4)
+                s_entry = self.sifat.get(ch, {})
+                s_dict = s_entry.get("sifat", {}) if isinstance(s_entry, dict) else {}
+                vec[
+                    self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
+                ] = self._encode_sifat(s_dict)
 
-        if not embeddings and text:
-            embeddings.append(np.zeros(self.embedding_dim, dtype=float))
+                if self.n_rules and filtered_idx < len(rule_flags):
+                    vec[
+                        self.idx_rule_start : self.idx_rule_start + self.n_rules
+                    ] = rule_flags[filtered_idx]
+                if ch in self.marker_rule_map:
+                    rname = self.marker_rule_map[ch]
+                    ri = self.rule_to_index.get(rname)
+                    if ri is not None:
+                        vec[self.idx_rule_start + ri] = 1.0
 
-        return embeddings
+                embeddings.append(vec)
+                last_vec = vec
+                filtered_idx += 1
+
+            for idx, vec in enumerate(embeddings):
+                if idx not in word_last_indices:
+                    vec[
+                        self.idx_pause_start : self.idx_pause_start + self.n_pause
+                    ] = self.pause_default
+
+            if add_end_pause and embeddings:
+                embeddings[-1][
+                    self.idx_pause_start : self.idx_pause_start + self.n_pause
+                ] = self._encode_pause_bits(4)
+
+            if not embeddings and text:
+                embeddings.append(np.zeros(self.embedding_dim, dtype=float))
+
+            return embeddings
+
+        # Determine control path
+        if ayah is None and subtext is None:
+            sura_key = str(sura)
+            if sura_key not in self.quran:
+                raise ValueError(f"Sura {sura_key} not found in quran.json")
+            ayat_map = self.quran[sura_key]
+            embeddings: List[np.ndarray] = []
+            for a_num in sorted(ayat_map.keys(), key=lambda x: int(x)):
+                text = ayat_map[a_num]
+                embeddings.extend(
+                    _embed_segment(text, sura, int(a_num), True, True)
+                )
+            return embeddings
+
+        text = self.get_text(sura, ayah, subtext)
+        return _embed_segment(
+            text,
+            sura,
+            ayah,
+            apply_rules=ayah is not None,
+            add_end_pause=(ayah is not None and subtext is None),
+        )
 
     # ------------------------------------------------------------------
     # EMBEDDING → TEXT (rough reconstruction)
@@ -794,7 +590,11 @@ class TajweedEmbedder:
                 haraka_val = ""
             pause_val = decoded["pause_value"] if decoded["pause_value"] else ""
             sifat_vals = decoded["sifat_values"]
-            sifat_val = "/".join(s[:3] for s in sifat_vals) if sifat_vals else ""
+            sifat_val = (
+                "/".join(self.sifat_embedder.short_label(s) for s in sifat_vals)
+                if sifat_vals
+                else ""
+            )
             rules = decoded["rules"]
             rules_val = ", ".join(rules) if rules else ""
             # Always return fixed columns: Letter, Haraka, Pause, Sifat, Rules
