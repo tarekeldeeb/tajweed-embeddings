@@ -1,6 +1,8 @@
+"""Tajwīd rule spans, pause encoding, and helpers."""
+# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-positional-arguments,too-many-locals,duplicate-code
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 

@@ -1,9 +1,17 @@
 """Tajweed embedding module for Quranic text."""
+# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches,too-many-locals,duplicate-code
 
 import json
 from importlib.resources import files
 import unicodedata
 from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+
+from .harakat_embedder import HarakatEmbedder
+from .letters_embedder import LettersEmbedder
+from .sifat_embedder import SifatEmbedder
+from .tajweed_rules_embedder import TajweedRulesEmbedder
 
 import numpy as np
 
@@ -53,11 +61,6 @@ class TajweedEmbedder:
         }
 
         # Component helpers
-        from .letters_embedder import LettersEmbedder
-        from .harakat_embedder import HarakatEmbedder
-        from .sifat_embedder import SifatEmbedder
-        from .tajweed_rules_embedder import TajweedRulesEmbedder
-
         self.letters_helper = LettersEmbedder(self.sifat, self.pause_chars)
         self.haraka_helper = HarakatEmbedder()
         self.sifat_embedder = SifatEmbedder()
@@ -91,25 +94,19 @@ class TajweedEmbedder:
         self.harakat = self.haraka_helper.harakat
         self.long_vowel_defaults = self.haraka_helper.long_vowel_defaults
         self.haraka_symbol = self.haraka_helper.haraka_symbol
-        self._compose_haraka_state = self.haraka_helper.compose_haraka_state
 
         self.n_pause = self.tajweed_rules.n_pause
         self.pause_default = self.tajweed_rules.pause_default
         self.pause_categories = self.tajweed_rules.pause_categories
         self.pause_category_symbol = self.tajweed_rules.pause_category_symbol
         self.pause_char_category = self.tajweed_rules.pause_char_category
-        self._encode_pause_bits = self.tajweed_rules.encode_pause_bits
-        self._pause_vector = self.tajweed_rules.pause_vector
 
         self.n_sifat = self.sifat_embedder.n_sifat
-        self._encode_sifat = self.sifat_embedder.encode
-        self._decode_sifat = self.sifat_embedder.decode
 
         self.rule_names = self.tajweed_rules.rule_names
         self.n_rules = self.tajweed_rules.n_rules
         self.rule_to_index = self.tajweed_rules.rule_to_index
         self.rules_index = self.tajweed_rules.rules_index
-        self._apply_rule_spans = self.tajweed_rules.apply_rule_spans
 
         # Offsets inside embedding vector
         self.idx_haraka_start: int = self.n_letters
@@ -136,21 +133,6 @@ class TajweedEmbedder:
     # ------------------------------------------------------------------
     # HARAKA HELPERS
     # ------------------------------------------------------------------
-    def _compose_haraka_state(
-        self, base: Optional[str], has_shadda: bool
-    ) -> Optional[str]:
-        """
-        Map base haraka + shadda flag to the explicit state key.
-        Supported bases: fatha, kasra, damma, sukun (+zero), tanwīn
-        """
-        if base in ("fatha", "kasra", "damma"):
-            return base + ("_shadda" if has_shadda else "")
-        if base in ("sukun", "sukun_zero"):
-            return base
-        if base in ("fathatan", "kasratan", "dammatan"):
-            return base  # tanwīn does not combine with shadda by design
-        return None
-
     def _decode_haraka(self, vec: np.ndarray) -> Tuple[Optional[str], bool]:
         """Return (base, has_shadda) from an embedding haraka slice."""
         slice_start = self.idx_haraka_start
@@ -170,17 +152,12 @@ class TajweedEmbedder:
         return state, False
 
     def _encode_pause_bits(self, category: int) -> np.ndarray:
-        """Encode pause category (0-7) into 3-bit binary vector."""
-        category = max(0, min(7, int(category)))
-        return np.array(
-            [(category >> 0) & 1, (category >> 1) & 1, (category >> 2) & 1],
-            dtype=float,
-        )
+        """Backwards-compatible wrapper for pause encoding."""
+        return self.tajweed_rules.encode_pause_bits(category)
 
     def _pause_vector(self, ch: str) -> np.ndarray:
-        """Return pause slice 3-bit code for a pause glyph."""
-        category = self.pause_char_category.get(ch, 0)
-        return self._encode_pause_bits(category)
+        """Backwards-compatible wrapper for pause vector."""
+        return self.tajweed_rules.pause_vector(ch)
 
     # ------------------------------------------------------------------
     # TEXT RETRIEVAL (SURA / AYAH / SUBTEXT)
@@ -213,9 +190,7 @@ class TajweedEmbedder:
 
         # Full sūrah: concatenate āyāt in numeric order
         ayat_map = self.quran[sura_str]
-        ordered_texts = [
-            ayat_map[k] for k in sorted(ayat_map.keys(), key=lambda x: int(x))
-        ]
+        ordered_texts = [ayat_map[k] for k in sorted(ayat_map.keys(), key=int)]
         return "".join(ordered_texts)
 
     # ------------------------------------------------------------------
@@ -315,7 +290,9 @@ class TajweedEmbedder:
 
             # Rule flags
             if apply_rules and ayah_val is not None:
-                rule_flags = self._apply_rule_spans(sura_val, ayah_val, chars)
+                rule_flags = self.tajweed_rules.apply_rule_spans(
+                    sura_val, ayah_val, chars
+                )
             else:
                 rule_flags = [
                     np.zeros(self.n_rules, dtype=float) for _ in range(filtered_len)
@@ -327,7 +304,7 @@ class TajweedEmbedder:
             last_has_shadda: bool = False
             filtered_idx = 0
 
-            for i, ch in enumerate(chars):
+            for ch in chars:
                 ch = self.char_aliases.get(ch, ch)
                 if ch not in self.letters:
                     if last_vec is not None:
@@ -337,7 +314,7 @@ class TajweedEmbedder:
                             else:
                                 last_base = self.haraka_base_map.get(ch, last_base)
 
-                            state = self._compose_haraka_state(
+                            state = self.haraka_helper.compose_haraka_state(
                                 last_base, last_has_shadda
                             )
                             last_vec[
@@ -378,7 +355,7 @@ class TajweedEmbedder:
                 s_dict = s_entry.get("sifat", {}) if isinstance(s_entry, dict) else {}
                 vec[
                     self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
-                ] = self._encode_sifat(s_dict)
+                ] = self.sifat_embedder.encode(s_dict)
 
                 if self.n_rules and filtered_idx < len(rule_flags):
                     vec[
@@ -417,7 +394,7 @@ class TajweedEmbedder:
                 raise ValueError(f"Sura {sura_key} not found in quran.json")
             ayat_map = self.quran[sura_key]
             embeddings: List[np.ndarray] = []
-            for a_num in sorted(ayat_map.keys(), key=lambda x: int(x)):
+            for a_num in sorted(ayat_map.keys(), key=int):
                 text = ayat_map[a_num]
                 embeddings.extend(
                     _embed_segment(text, sura, int(a_num), True, True)
@@ -511,7 +488,10 @@ class TajweedEmbedder:
             if haraka_slice.size == self.n_harakat and np.max(haraka_slice) > 0:
                 idx = int(np.argmax(haraka_slice))
                 haraka_state = self.index_to_haraka_state.get(idx)
-                haraka_name = self.harakat_state_labels[idx] if 0 <= idx < len(self.harakat_state_labels) else (haraka_state or "")
+                if 0 <= idx < len(self.harakat_state_labels):
+                    haraka_name = self.harakat_state_labels[idx]
+                else:
+                    haraka_name = haraka_state or ""
             if not haraka_state and letter in self.long_vowel_defaults:
                 haraka_state = self.long_vowel_defaults[letter]
                 haraka_name = haraka_state
@@ -526,11 +506,11 @@ class TajweedEmbedder:
                 bits = [int(b) for b in pause_slice[: self.n_pause]]
                 pause_category = (bits[0]) | (bits[1] << 1) | (bits[2] << 2)
                 if pause_category in self.pause_categories:
-                    pause_value = (
-                        self.pause_category_symbol.get(pause_category, str(pause_category))
-                        if style == "short"
-                        else self.pause_categories[pause_category]
+                    pause_value = self.pause_category_symbol.get(
+                        pause_category, str(pause_category)
                     )
+                    if style != "short":
+                        pause_value = self.pause_categories[pause_category]
                 elif pause_category > 0:
                     pause_value = f"pause_{pause_category}"
 
@@ -540,7 +520,7 @@ class TajweedEmbedder:
             ]
             sifat_values: List[str] = []
             if sifat_slice.size == self.n_sifat:
-                sifat_values = self._decode_sifat(sifat_slice)
+                sifat_values = self.sifat_embedder.decode(sifat_slice)
 
             # Rules
             rules_slice = enc[self.idx_rule_start :]
@@ -590,11 +570,10 @@ class TajweedEmbedder:
                 haraka_val = ""
             pause_val = decoded["pause_value"] if decoded["pause_value"] else ""
             sifat_vals = decoded["sifat_values"]
-            sifat_val = (
-                "/".join(self.sifat_embedder.short_label(s) for s in sifat_vals)
-                if sifat_vals
-                else ""
-            )
+            if sifat_vals:
+                sifat_val = "/".join(self.sifat_embedder.short_label(s) for s in sifat_vals)
+            else:
+                sifat_val = ""
             rules = decoded["rules"]
             rules_val = ", ".join(rules) if rules else ""
             # Always return fixed columns: Letter, Haraka, Pause, Sifat, Rules
@@ -626,7 +605,12 @@ class TajweedEmbedder:
 
             if not decoded["haraka_state"] and not decoded["haraka_name"]:
                 parts = [
-                    (label, value if label not in ("Pause", "Sifat", "Rules") else f"\x1b[90m{value}\x1b[0m")
+                    (
+                        label,
+                        value
+                        if label not in ("Pause", "Sifat", "Rules")
+                        else f"\x1b[90m{value}\x1b[0m",
+                    )
                     for label, value in parts
                 ]
 
@@ -646,11 +630,15 @@ class TajweedEmbedder:
                 idx_width = len(str(len(rows) - 1))
                 lines = []
                 for idx, (row, haraka_missing) in enumerate(rows_data):
-                    padded = [_ljust_disp(val, col_widths[i]) for i, val in enumerate(row)]
+                    padded = [
+                        _ljust_disp(val, col_widths[i]) for i, val in enumerate(row)
+                    ]
                     if haraka_missing:
                         for i in range(2, len(padded)):
                             padded[i] = _dim(padded[i])
-                    lines.append(f"[{str(idx).rjust(idx_width)}] " + " | ".join(padded))
+                    lines.append(
+                        f"[{str(idx).rjust(idx_width)}] " + " | ".join(padded)
+                    )
                 return "\n".join(lines)
             else:
                 formatted = []

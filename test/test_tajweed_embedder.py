@@ -1,3 +1,5 @@
+"""Core tests for TajweedEmbedder embeddings and reconstruction."""
+
 import numpy as np
 import pytest
 
@@ -100,6 +102,7 @@ def test_embedding_to_text_reversible(emb):
 
 
 def test_embedding_to_text_zero_vector(emb):
+    """Zero vector still returns a printable string."""
     zero = np.zeros(emb.embedding_dim)
     txt = emb.embedding_to_text([zero])
     assert isinstance(txt, str)
@@ -111,6 +114,7 @@ def test_embedding_to_text_zero_vector(emb):
 # -------------------------------------------------------------------
 
 def test_compare_identical(emb):
+    """Identical embeddings have cosine 1.0."""
     e1 = emb.text_to_embedding(1, 1, "بِسْ")
     e2 = emb.text_to_embedding(1, 1, "بِسْ")
     sim = emb.compare(e1, e2)
@@ -118,6 +122,7 @@ def test_compare_identical(emb):
 
 
 def test_compare_different(emb):
+    """Different embeddings have similarity below 1."""
     e1 = emb.text_to_embedding(1, 1, "بِ")
     e2 = emb.text_to_embedding(1, 1, "سْ")
     sim = emb.compare(e1, e2)
@@ -125,6 +130,7 @@ def test_compare_different(emb):
 
 
 def test_compare_length_mismatch(emb):
+    """Length mismatch still returns a float similarity."""
     e1 = emb.text_to_embedding(1, 1, "بِسْمِ")
     e2 = emb.text_to_embedding(1, 1, "بِ")
     sim = emb.compare(e1, e2)
@@ -132,12 +138,14 @@ def test_compare_length_mismatch(emb):
 
 
 def test_score_identical(emb):
+    """Score identical embeddings == 100."""
     e = emb.text_to_embedding(1, 1, "بِسْ")
     s = emb.score(e, e)
     assert s == 100.0
 
 
 def test_score_scaled(emb):
+    """Score different embeddings within [0,100]."""
     e1 = emb.text_to_embedding(1, 1, "بِ")
     e2 = emb.text_to_embedding(1, 1, "سْ")
     s = emb.score(e1, e2)
@@ -145,6 +153,7 @@ def test_score_scaled(emb):
 
 
 def test_score_length_mismatch(emb):
+    """Score still returns float when lengths differ."""
     e1 = emb.text_to_embedding(1, 1, "بِسْمِ")
     e2 = emb.text_to_embedding(1, 1, "بِ")
     s = emb.score(e1, e2)
@@ -156,12 +165,14 @@ def test_score_length_mismatch(emb):
 # -------------------------------------------------------------------
 
 def test_long_subtext(emb):
+    """Long custom subtext still embeds correctly."""
     txt = "بِسْمِ اللَّهِ " * 3
     e = emb.text_to_embedding(1, 1, txt)
     assert len(e) > 0
 
 
 def test_full_surah_sequence_long(emb):
+    """Full surah embeddings produce many vectors."""
     out = emb.text_to_embedding(1)  # Surah Al-Fātiḥa (short but multiple ayat)
     assert len(out) > 10
 
@@ -181,5 +192,3 @@ def test_full_surah_has_rule_flags(emb):
     out = emb.text_to_embedding(1)
     assert len(out) > 0
     assert any(vec[emb.idx_rule_start:].sum() > 0 for vec in out)
-    
-"""Core tests for TajweedEmbedder embeddings and reconstruction."""

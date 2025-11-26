@@ -1,3 +1,4 @@
+"""Compact ṣifāt encoder/decoder (6-bit representation)."""
 from __future__ import annotations
 
 from typing import Dict, List
@@ -27,18 +28,19 @@ class SifatEmbedder:
 
     @staticmethod
     def _safe_float(v) -> float:
+        """Convert to float, defaulting to 0.0 on type/parse errors."""
         try:
             return float(v)
-        except Exception:
+        except (TypeError, ValueError):
             return 0.0
 
     def encode(self, s_dict: Dict[str, float]) -> np.ndarray:
+        """Encode raw sifat dict into a 6-bit vector."""
         vec = np.zeros(self.n_sifat, dtype=float)
         pos = 0
 
         # jahr vs hams
         jahr = self._safe_float(s_dict.get("jahr", 0))
-        hams = self._safe_float(s_dict.get("hams", s_dict.get("hms", 0)))
         vec[pos] = 1.0 if jahr > 0 else 0.0
         pos += 1
 
@@ -74,6 +76,7 @@ class SifatEmbedder:
         return vec
 
     def decode(self, slice_vec: np.ndarray) -> List[str]:
+        """Decode a 6-bit sifat vector into human-readable labels."""
         if slice_vec.size < self.n_sifat:
             return []
         pos = 0

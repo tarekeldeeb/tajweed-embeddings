@@ -1,3 +1,5 @@
+"""Letter inventory and indexing derived from sifat definitions."""
+# pylint: disable=too-few-public-methods
 from __future__ import annotations
 
 from typing import Dict, List, Set
@@ -17,4 +19,3 @@ class LettersEmbedder:
             i: ch for ch, i in self.letter_to_index.items()
         }
         self.n_letters: int = len(self.letters)
-"""Letter inventory and indexing derived from sifat definitions."""

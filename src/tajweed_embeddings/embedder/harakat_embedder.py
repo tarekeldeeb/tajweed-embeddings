@@ -1,3 +1,5 @@
+"""Haraka state definitions, symbols, and encode/decode helpers."""
+# pylint: disable=too-many-instance-attributes,duplicate-code
 from __future__ import annotations
 
 from typing import Dict, List, Optional
