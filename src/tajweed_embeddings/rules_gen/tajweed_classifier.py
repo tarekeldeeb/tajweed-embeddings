@@ -1,8 +1,6 @@
 #!/bin/python3
 
 from collections import deque, namedtuple
-from tree import Exemplar, json2tree
-import glob
 import json
 import multiprocessing
 import tqdm
@@ -11,18 +9,27 @@ import sys
 import unicodedata
 import argparse
 import tempfile
-import requests
 from pathlib import Path
 
-REPO_SRC = Path(__file__).resolve().parent.parent / "src"
-if str(REPO_SRC) not in sys.path:
-    sys.path.insert(0, str(REPO_SRC))
+BASE_DIR = Path(__file__).resolve().parent
+PACKAGE_ROOT = BASE_DIR.parent
+SRC_ROOT = PACKAGE_ROOT.parent
+REPO_ROOT = SRC_ROOT.parent
+
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+RULE_TREES_DIR = BASE_DIR / "rule_trees"
 
 try:
-    from tajweed_embeddings.util.normalization import normalize_superscript_alef
-except Exception:
-    def normalize_superscript_alef(text: str) -> str:
-        return text.replace("ـٰ", "ٰ")
+    from .tree import Exemplar, json2tree
+except ImportError:  # pragma: no cover - fallback for direct script invocation
+    from tree import Exemplar, json2tree
+
+from tajweed_embeddings.util.normalization import normalize_superscript_alef
+from tajweed_embeddings.util.quran_download import DEFAULT_TANZIL_URLS, download_quran_txt
 
 RangeAttributes = namedtuple("Attributes", "start end attributes")
 
@@ -478,7 +485,7 @@ def spinning_cursor():
             yield cursor
 
 if __name__ == "__main__":
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = str(BASE_DIR)
     output_dir = os.path.join(base_dir, "output")
 
     parser = argparse.ArgumentParser(description='Generate Quran Tajweed Label Embeddings.')
@@ -492,29 +499,27 @@ if __name__ == "__main__":
     dict = {'h'}
     # Load rules from incredibly high-tech datastore.
     rule_trees = {}
-    rule_start_files = glob.glob("rule_trees/*.start.json")
+    rule_start_files = sorted(RULE_TREES_DIR.glob("*.start.json"))
     eprint("Loading rules..", end=" ")
     for start_file in rule_start_files:
-        rule_name = os.path.basename(start_file).partition(".")[0]
-        end_file = start_file.replace(".start.", ".end.")
+        rule_name = start_file.name.partition(".")[0]
+        end_file = start_file.with_name(start_file.name.replace(".start.", ".end."))
         rule_trees[rule_name] = {
             "start": json2tree(json.load(open(start_file))),
             "end": json2tree(json.load(open(end_file))),
         }
     if sys.stdin.isatty():
                   
-        txt_url = "https://tanzil.net/pub/download/index.php?marks=true&alif=false&quranType=uthmani&outType=txt-2&agree=true"
         fname = os.path.join(output_dir, "quran-uthmani.txt")
         os.makedirs(os.path.dirname(fname), exist_ok=True)
-        if(os.path.exists(fname)):
+        if os.path.exists(fname) and os.path.getsize(fname) > 0:
             eprint(f'\nSTDIN is empty! Reading Quran Text from:\n\t{fname}', end="")
         else:
-            eprint(f'\nSTDIN is empty! Downloading Quran Text from:\n\t{txt_url}', end="")
-            req = requests.get(txt_url, allow_redirects=True)
-            f = open(fname, 'wb')
-            f.write(req.content)
-            f.close()
-        file = open(fname,'r').readlines()
+            eprint(f'\nSTDIN is empty! Downloading Quran Text from:\n\t{DEFAULT_TANZIL_URLS[0]}', end="")
+            ok = download_quran_txt(Path(fname), urls=DEFAULT_TANZIL_URLS)
+            if not ok or not os.path.exists(fname) or os.path.getsize(fname) == 0:
+                raise RuntimeError(f"Failed to download Quran text to {fname}")
+        file = open(fname, 'r', encoding="utf-8").readlines()
     else:
         file = sys.stdin
     # Read in text to classify

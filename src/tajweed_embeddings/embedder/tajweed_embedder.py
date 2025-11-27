@@ -13,9 +13,8 @@ from .harakat_embedder import HarakatEmbedder
 from .letters_embedder import LettersEmbedder
 from .sifat_embedder import SifatEmbedder
 from .tajweed_rules_embedder import TajweedRulesEmbedder
+from tajweed_embeddings.util import download_quran_txt
 from tajweed_embeddings.util.normalization import normalize_superscript_alef
-
-import numpy as np
 
 
 class TajweedEmbedder:
@@ -148,7 +147,7 @@ class TajweedEmbedder:
         data_dir.mkdir(parents=True, exist_ok=True)
         repo_root = data_dir.parent.parent  # .../src
         repo_root = repo_root.parent  # project root
-        rules_gen_dir = repo_root / "rules-gen"
+        rules_gen_dir = data_dir.parent / "rules_gen"
         quran_txt = rules_gen_dir / "output" / "quran-uthmani.txt"
         quran_json = data_dir / "quran.json"
         rules_json = data_dir / "tajweed.rules.json"
@@ -177,17 +176,19 @@ class TajweedEmbedder:
             or rules_json.stat().st_size == 0
             or not self._json_type_matches(rules_json, list)
         )
-        need_quran_txt = not quran_txt.exists()
+        need_quran_txt = (not quran_txt.exists()) or quran_txt.stat().st_size == 0
 
         if need_rules or need_quran_txt:
-            if not quran_txt.exists():
-                # Try to restore the source text from git; if still missing, bail out.
-                self._restore_from_git(quran_txt, "rules-gen/output/quran-uthmani.txt")
-            if not quran_txt.exists():
+            if not quran_txt.exists() or quran_txt.stat().st_size == 0:
+                # Try to restore the source text from git; if still missing, attempt download.
+                self._restore_from_git(quran_txt, "src/tajweed_embeddings/rules_gen/output/quran-uthmani.txt")
+            if not quran_txt.exists() or quran_txt.stat().st_size == 0:
+                download_quran_txt(quran_txt)
+            if not quran_txt.exists() or quran_txt.stat().st_size == 0:
                 raise FileNotFoundError(
                     f"Missing Quran text at {quran_txt}. "
-                    "Run rules-gen/tajweed_classifier.py after installing its dependencies "
-                    "(pip install -r rules-gen/requirements.txt)."
+                    "Run src/tajweed_embeddings/rules_gen/tajweed_classifier.py after installing its dependencies "
+                    "(pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
                 )
             cmd = [
                 "python3",
@@ -205,8 +206,8 @@ class TajweedEmbedder:
                 self._restore_from_git(rules_json, "src/tajweed_embeddings/data/tajweed.rules.json")
                 if not self._json_type_matches(rules_json, list):
                     raise RuntimeError(
-                        "Failed to generate tajweed.rules.json; ensure rules-gen dependencies "
-                        "are installed (pip install -r rules-gen/requirements.txt)."
+                        "Failed to generate tajweed.rules.json; ensure rules_gen dependencies "
+                        "are installed (pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
                     ) from exc
 
         # Build quran.json if missing or invalid.
