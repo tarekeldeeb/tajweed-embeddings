@@ -15,5 +15,8 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=7.4"]
 
+[project.scripts]
+tajweed_embedder = "tajweed_embeddings.embedder.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]

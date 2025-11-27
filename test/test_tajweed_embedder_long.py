@@ -117,4 +117,23 @@ def test_randomized_arabic_fuzzing(emb):
 
     expected = count_letters(emb, seq)
     assert len(out) == expected
+
+
+def test_all_rules_present_in_embeddings(emb):
+    """Ensure every tajwīd rule annotation for an ayah appears in its embeddings."""
+    sura = "1"
+    ayah = "1"
+    annotations = emb.tajweed_rules.rules_index.get((sura, ayah), [])
+    if not annotations:
+        pytest.skip("No rules available for sura 1 ayah 1 in current data")
+
+    vecs = emb.text_to_embedding(int(sura), int(ayah))
+    n_rules = emb.n_rules
+    active = set()
+    for v in vecs:
+        rules_slice = v[emb.idx_rule_start : emb.idx_rule_start + n_rules]
+        active.update(i for i, val in enumerate(rules_slice) if val > 0)
+
+    expected = set(emb.rule_to_index[a["rule"]] for a in annotations if a.get("rule") in emb.rule_to_index)
+    assert expected.issubset(active)
 """Stress tests for long sequences and repeated embeddings."""
