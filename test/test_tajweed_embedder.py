@@ -204,3 +204,49 @@ def test_maddah_above_attaches_to_alif(emb):
     haraka_slice = vec[emb.idx_haraka_start : emb.idx_haraka_start + emb.n_harakat]
     idx = int(haraka_slice.argmax())
     assert emb.index_to_haraka_state.get(idx) == "madd"
+
+
+# -------------------------------------------------------------------
+# COVERAGE / CONSISTENCY TESTS
+# -------------------------------------------------------------------
+
+def test_first_mid_last_ayah_embeddings_per_sura(emb):
+    """Embed first, middle, last āyah of every sūrah and validate rule spans."""
+    for sura_str, ayat_map in emb.quran.items():
+        sura = int(sura_str)
+        ayah_numbers = sorted(int(k) for k in ayat_map.keys())
+        mid_idx = len(ayah_numbers) // 2
+        targets = {
+            ayah_numbers[0],
+            ayah_numbers[mid_idx],
+            ayah_numbers[-1],
+        }
+        for ayah in sorted(targets):
+            vecs = emb.text_to_embedding(sura, ayah)
+            assert vecs, f"Empty embedding for {sura}:{ayah}"
+            assert all(vec.shape[0] == emb.embedding_dim for vec in vecs)
+            assert all(vec[emb.idx_rule_start:].shape[0] == emb.n_rules for vec in vecs)
+            key = (str(sura), str(ayah))
+            anns = emb.tajweed_rules.rules_index.get(key, [])
+            has_rule_annotations = any(
+                ann.get("rule") in emb.rule_to_index for ann in anns
+            )
+            if has_rule_annotations:
+                assert any(
+                    vec[emb.idx_rule_start:].sum() > 0 for vec in vecs
+                ), f"Expected rule flags for {sura}:{ayah}"
+
+
+def test_all_rules_present_in_corpus_embeddings(emb):
+    """All tajwīd rules from tajweed.rules.json must appear in embeddings somewhere."""
+    assert emb.n_rules == len(emb.rule_names)
+    seen_rules = set()
+    for sura in sorted(int(k) for k in emb.quran.keys()):
+        vecs = emb.text_to_embedding(sura)
+        for vec in vecs:
+            rules_slice = vec[emb.idx_rule_start:]
+            seen_rules.update(np.nonzero(rules_slice > 0)[0].tolist())
+        if len(seen_rules) == emb.n_rules:
+            break
+    missing = sorted(set(range(emb.n_rules)) - seen_rules)
+    assert not missing, f"Missing rules: {[emb.rule_names[i] for i in missing]}"
