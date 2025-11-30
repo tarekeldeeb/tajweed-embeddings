@@ -250,3 +250,36 @@ def test_all_rules_present_in_corpus_embeddings(emb):
             break
     missing = sorted(set(range(emb.n_rules)) - seen_rules)
     assert not missing, f"Missing rules: {[emb.rule_names[i] for i in missing]}"
+
+
+def test_no_duplicate_ikhfa_spans(emb):
+    """Ikhfa spans should not overlap within an āyah."""
+    if "ikhfa" not in emb.rule_to_index:
+        pytest.skip("ikhfa not present in rules JSON")
+    for (sura, ayah), anns in emb.tajweed_rules.rules_index.items():
+        covered = set()
+        for ann in anns:
+            if ann.get("rule") != "ikhfa":
+                continue
+            start = int(ann.get("start", 0))
+            end = int(ann.get("end", 0))
+            for idx in range(start, end):
+                assert idx not in covered, f"Duplicate ikhfa coverage at {sura}:{ayah} index {idx}"
+                covered.add(idx)
+
+
+def test_madd_munfasil_and_muttasil_present(emb):
+    """Ensure derived madd spans surface somewhere in the corpus."""
+    required = [r for r in ("madd_munfasil", "madd_muttasil") if r in emb.rule_to_index]
+    if not required:
+        pytest.skip("Derived madd rules not present in rules JSON")
+    seen = {r: False for r in required}
+    for anns in emb.tajweed_rules.rules_index.values():
+        for ann in anns:
+            r = ann.get("rule")
+            if r in seen:
+                seen[r] = True
+        if all(seen.values()):
+            break
+    missing = [r for r, v in seen.items() if not v]
+    assert not missing, f"Missing derived madd spans: {missing}"
