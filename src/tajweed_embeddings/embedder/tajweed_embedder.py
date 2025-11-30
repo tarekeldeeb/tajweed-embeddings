@@ -700,7 +700,7 @@ class TajweedEmbedder:
         def _dim(txt: str) -> str:
             return f"\x1b[90m{txt}\x1b[0m" if txt else txt
 
-        def _render_short(enc) -> tuple[list[str], bool]:
+        def _render_short(enc) -> tuple[list[str], bool, bool]:
             decoded = _extract_values(enc)
             letter_val = decoded["letter"] or "-"
             if letter_val and unicodedata.combining(letter_val):
@@ -723,7 +723,8 @@ class TajweedEmbedder:
             rules_val = ", ".join(rules) if rules else ""
             # Always return fixed columns: Letter, Haraka, Pause, Sifat, Rules
             haraka_missing = not (haraka_state or haraka_name)
-            return [letter_val, haraka_val, pause_val, sifat_val, rules_val], haraka_missing
+            has_silent_rule = "silent" in rules
+            return [letter_val, haraka_val, pause_val, sifat_val, rules_val], haraka_missing, has_silent_rule
 
         def _render_long(enc) -> str:
             decoded = _extract_values(enc)
@@ -767,23 +768,24 @@ class TajweedEmbedder:
                 raise ValueError("Encoding sequence is empty")
             if style == "short":
                 rows_data = [_render_short(item) for item in encoding]
-                rows = [r for r, _ in rows_data]
+                rows = [r for r, _, _ in rows_data]
                 col_widths = [
                     max(1, max(_disp_width(row[i]) for row in rows))
                     for i in range(len(rows[0]))
                 ]
                 idx_width = len(str(len(rows) - 1))
                 lines = []
-                for idx, (row, haraka_missing) in enumerate(rows_data):
+                for idx, (row, haraka_missing, has_silent_rule) in enumerate(rows_data):
                     padded = [
                         _ljust_disp(val, col_widths[i]) for i, val in enumerate(row)
                     ]
                     if haraka_missing:
                         for i in range(2, len(padded)):
                             padded[i] = _dim(padded[i])
-                    lines.append(
-                        f"[{str(idx).rjust(idx_width)}] " + " | ".join(padded)
-                    )
+                    line = f"[{str(idx).rjust(idx_width)}] " + " | ".join(padded)
+                    if haraka_missing or has_silent_rule:
+                        line = _dim(line)
+                    lines.append(line)
                 return "\n".join(lines)
             else:
                 formatted = []
@@ -793,7 +795,7 @@ class TajweedEmbedder:
 
         # Single encoding
         if style == "short":
-            row, haraka_missing = _render_short(encoding)
+            row, haraka_missing, has_silent_rule = _render_short(encoding)
             rows = [row]
             col_widths = [
                 max(1, max(_disp_width(row[i]) for row in rows))
@@ -804,8 +806,15 @@ class TajweedEmbedder:
             if haraka_missing:
                 for i in range(2, len(padded)):
                     padded[i] = _dim(padded[i])
-            return f"[{str(0).rjust(idx_width)}] " + " | ".join(padded)
-        return _render_long(encoding)
+            line = f"[{str(0).rjust(idx_width)}] " + " | ".join(padded)
+            if haraka_missing or has_silent_rule:
+                line = _dim(line)
+            return line
+        line = _render_long(encoding)
+        decoded = _extract_values(encoding)
+        if (not decoded["haraka_state"] and not decoded["haraka_name"]) or ("silent" in decoded["rules"]):
+            line = _dim(line)
+        return line
 
     # ------------------------------------------------------------------
     # COMPARISON & SCORE

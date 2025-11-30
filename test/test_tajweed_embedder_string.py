@@ -1,3 +1,5 @@
+import re
+
 def test_encoding_to_string_single_line_has_sections(emb):
     """encoding_to_string returns a readable, single-line description for one vector."""
     vec = emb.text_to_embedding(1, 1, "بَ")[0]
@@ -15,9 +17,11 @@ def test_encoding_to_string_sequence_has_one_line_per_vector(emb):
     out = emb.encoding_to_string(seq)
 
     lines = out.splitlines()
+    # Strip ANSI dim codes for prefix checks
+    stripped = [re.sub(r"\x1b\[[0-9;]*m", "", ln) for ln in lines]
     assert len(lines) == len(seq)
-    assert lines[0].startswith("[0] ")
-    assert lines[-1].startswith(f"[{len(seq) - 1}] ")
+    assert stripped[0].startswith("[0] ")
+    assert stripped[-1].startswith(f"[{len(seq) - 1}] ")
 
 
 def test_encoding_to_string_includes_rules_when_active(emb):
@@ -62,4 +66,14 @@ def test_encoding_to_string_dagger_alif_is_madd(emb):
     out = emb.encoding_to_string(vec)
 
     assert "~" in out
+
+
+def test_encoding_to_string_dims_when_silent_rule(emb):
+    """Silent rule should dim the rendered line even if haraka is present."""
+    vec = emb.text_to_embedding(1, 1, "بَ")[0].copy()
+    silent_idx = emb.rule_to_index["silent"]
+    vec[emb.idx_rule_start + silent_idx] = 1.0
+
+    out = emb.encoding_to_string(vec)
+    assert "\x1b[90m" in out  # dim applied to full line
 """String formatting tests for encoding_to_string."""
