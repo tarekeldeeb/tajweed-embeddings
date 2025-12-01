@@ -283,6 +283,7 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "has_silent_circle": "۟" in c_ext,
                 "has_vowel_incl_tanween": any(s in c_ext for s in "ًٌٍَُِْ"),
                 "base_is_dagger_alif": c_base == "ٰ",
+                "is_hamzat_wasl": c_base == "ٱ",
             })
         if include_this:
             res.update({

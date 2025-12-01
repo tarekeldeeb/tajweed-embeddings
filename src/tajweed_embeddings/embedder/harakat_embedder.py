@@ -62,6 +62,7 @@ class HarakatEmbedder:
             "ً": "fathatan",
             "ٍ": "kasratan",
             "ٌ": "dammatan",
+            "ٓ": "madd",
             "ﹰ": "fathatan",  # Arabic Fathatan isolated form
             "ﹱ": "fathatan",  # Tatweel with Fathatan above
             "ﹲ": "dammatan",  # Arabic Dammatan isolated form

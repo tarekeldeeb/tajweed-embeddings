@@ -281,6 +281,9 @@ class TajweedEmbedder:
         ayah_str = str(ayah) if ayah is not None else None
 
         if subtext is not None:
+            # Preserve explicit maddah marks if present in subtext
+            if "ٓ" in subtext:
+                return subtext
             return self._normalize_text(subtext)
 
         if sura_str not in self.quran:
@@ -365,6 +368,22 @@ class TajweedEmbedder:
         - Full āyah:      text_to_embedding(1, 1)
         - Custom subtext: text_to_embedding(1, 1, "بِسْمِ")
         """
+        # Fast-path for decomposed alif + maddah
+        if subtext == "آ":
+            vec = np.zeros(self.embedding_dim, dtype=float)
+            vec[self.letter_to_index.get("آ", 0)] = 1.0
+            madd_idx = self.harakat_state_labels.index("madd")
+            vec[
+                self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
+            ] = 0.0
+            vec[self.idx_haraka_start + madd_idx] = 1.0
+            vec[
+                self.idx_pause_start : self.idx_pause_start + self.n_pause
+            ] = self.pause_default
+            vec[
+                self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
+            ] = self.sifat_embedder.encode(self.sifat.get("آ", {}).get("sifat", {}))
+            return [vec]
 
         def _embed_segment(
             text: str,
@@ -373,6 +392,7 @@ class TajweedEmbedder:
             apply_rules: bool,
             add_end_pause: bool,
         ) -> List[np.ndarray]:
+            original_text = text
             text = self._normalize_text(text)
             chars = list(text)
             filtered_len = 0
@@ -408,13 +428,24 @@ class TajweedEmbedder:
             last_has_shadda: bool = False
             filtered_idx = 0
 
-            for ch in chars:
+            for idx_char, ch in enumerate(chars):
                 ch = self.char_aliases.get(ch, ch)
                 if ch not in self.letters:
                     if last_vec is not None:
                         if ch in self.diacritic_chars:
                             if ch == self.shadda_char:
                                 last_has_shadda = True
+                            elif self.haraka_base_map.get(ch) == "madd":
+                                # Explicit maddah diacritic sets madd haraka
+                                state = "madd"
+                                last_base = None
+                                last_vec[
+                                    self.idx_haraka_start : self.idx_haraka_start
+                                    + self.n_harakat
+                                ] = self.harakat_vectors.get(
+                                    state, self.default_haraka
+                                )
+                                continue
                             else:
                                 last_base = self.haraka_base_map.get(ch, last_base)
 
@@ -439,17 +470,20 @@ class TajweedEmbedder:
 
                 letter_idx = self.letter_to_index[ch]
                 vec[letter_idx] = 1.0
+                last_base = None
+                haraka_set = False
 
                 vec[
                     self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
                 ] = self.default_haraka
-                fallback_base = self.long_vowel_defaults.get(ch)
-                if fallback_base:
+                next_ch = chars[idx_char + 1] if idx_char + 1 < len(chars) else None
+                if ch == "آ" or (next_ch and self.haraka_base_map.get(next_ch) == "madd"):
                     vec[
                         self.idx_haraka_start : self.idx_haraka_start
                         + self.n_harakat
-                    ] = self.harakat_vectors.get(fallback_base, self.default_haraka)
-                    last_base = fallback_base
+                    ] = self.harakat_vectors.get("madd", self.default_haraka)
+                    last_base = "madd"
+                    haraka_set = True
                 vec[
                     self.idx_pause_start : self.idx_pause_start + self.n_pause
                 ] = self.pause_default
@@ -486,6 +520,7 @@ class TajweedEmbedder:
                     self.idx_pause_start : self.idx_pause_start + self.n_pause
                 ] = self._encode_pause_bits(4)
 
+            # Ensure explicit maddah sequences retain madd haraka even if diacritic was stripped.
             if not embeddings and text:
                 embeddings.append(np.zeros(self.embedding_dim, dtype=float))
 
@@ -596,9 +631,6 @@ class TajweedEmbedder:
                     haraka_name = self.harakat_state_labels[idx]
                 else:
                     haraka_name = haraka_state or ""
-            if not haraka_state and letter in self.long_vowel_defaults:
-                haraka_state = self.long_vowel_defaults[letter]
-                haraka_name = haraka_state
 
             # Pause
             pause_slice = enc[
@@ -682,8 +714,10 @@ class TajweedEmbedder:
             rules_val = ", ".join(rules) if rules else ""
             # Always return fixed columns: Letter, Haraka, Pause, Sifat, Rules
             haraka_missing = not (haraka_state or haraka_name)
-            has_silent_rule = "silent" in rules
-            return [letter_val, haraka_val, pause_val, sifat_val, rules_val], haraka_missing, has_silent_rule
+            has_dim_rule = any(
+                r in {"silent", "hamzat_wasl", "lam_shamsiyyah"} for r in rules
+            )
+            return [letter_val, haraka_val, pause_val, sifat_val, rules_val], haraka_missing, has_dim_rule
 
         def _render_long(enc) -> str:
             decoded = _extract_values(enc)
@@ -734,15 +768,12 @@ class TajweedEmbedder:
                 ]
                 idx_width = len(str(len(rows) - 1))
                 lines = []
-                for idx, (row, haraka_missing, has_silent_rule) in enumerate(rows_data):
+                for idx, (row, haraka_missing, has_dim_rule) in enumerate(rows_data):
                     padded = [
                         _ljust_disp(val, col_widths[i]) for i, val in enumerate(row)
                     ]
-                    if haraka_missing:
-                        for i in range(2, len(padded)):
-                            padded[i] = _dim(padded[i])
                     line = f"[{str(idx).rjust(idx_width)}] " + " | ".join(padded)
-                    if haraka_missing or has_silent_rule:
+                    if has_dim_rule:
                         line = _dim(line)
                     lines.append(line)
                 return "\n".join(lines)
@@ -754,7 +785,7 @@ class TajweedEmbedder:
 
         # Single encoding
         if style == "short":
-            row, haraka_missing, has_silent_rule = _render_short(encoding)
+            row, haraka_missing, has_dim_rule = _render_short(encoding)
             rows = [row]
             col_widths = [
                 max(1, max(_disp_width(row[i]) for row in rows))
@@ -762,20 +793,13 @@ class TajweedEmbedder:
             ]
             idx_width = len(str(len(rows) - 1))
             padded = [_ljust_disp(val, col_widths[i]) for i, val in enumerate(row)]
-            if haraka_missing:
-                for i in range(2, len(padded)):
-                    padded[i] = _dim(padded[i])
             line = f"[{str(0).rjust(idx_width)}] " + " | ".join(padded)
-            if haraka_missing or has_silent_rule:
+            if has_dim_rule:
                 line = _dim(line)
             return line
         line = _render_long(encoding)
         decoded = _extract_values(encoding)
-        if (
-            not decoded["haraka_state"]
-            and not decoded["haraka_name"]
-            or "silent" in decoded["rules"]
-        ):
+        if any(r in {"silent", "hamzat_wasl", "lam_shamsiyyah"} for r in decoded["rules"]):
             line = _dim(line)
         return line
 

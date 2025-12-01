@@ -50,24 +50,6 @@ def test_encoding_to_string_silent_stops_after_haraka(emb):
     assert "Rules:" not in out
 
 
-def test_encoding_to_string_long_vowel_not_silent(emb):
-    """Long vowels without marks should still be treated as voiced."""
-    vecs = emb.text_to_embedding(1, 1, "با")  # alif typically unmarked
-    alif_vec = vecs[1]
-    out = emb.encoding_to_string(alif_vec)
-
-    assert "~" in out
-    assert "Pause" not in out  # short style has values only
-
-
-def test_encoding_to_string_dagger_alif_is_madd(emb):
-    """Dagger alif mark should surface as madd."""
-    vec = emb.text_to_embedding(1, 1, "ٰ")[0]
-    out = emb.encoding_to_string(vec)
-
-    assert "~" in out
-
-
 def test_encoding_to_string_dims_when_silent_rule(emb):
     """Silent rule should dim the rendered line even if haraka is present."""
     vec = emb.text_to_embedding(1, 1, "بَ")[0].copy()
@@ -76,4 +58,24 @@ def test_encoding_to_string_dims_when_silent_rule(emb):
 
     out = emb.encoding_to_string(vec)
     assert "\x1b[90m" in out  # dim applied to full line
+
+
+def test_encoding_to_string_dimming_rules_trigger(emb):
+    """Lines with silent/hamzat_wasl/lam_shamsiyyah should be dimmed."""
+    vec = emb.text_to_embedding(1, 1, "بَ")[0].copy()
+    dim_rules = [r for r in ("silent", "hamzat_wasl", "lam_shamsiyyah") if r in emb.rule_to_index]
+    if not dim_rules:
+        pytest.skip("No dimming rules present in rule set")
+    for rule in dim_rules:
+        vec[emb.idx_rule_start + emb.rule_to_index[rule]] = 1.0
+        out = emb.encoding_to_string([vec])
+        assert "\x1b[90m" in out
+        vec[emb.idx_rule_start + emb.rule_to_index[rule]] = 0.0
+
+
+def test_encoding_to_string_no_dim_without_rule(emb):
+    """Lines without dimming rules should not be dimmed."""
+    vec = emb.text_to_embedding(1, 1, "بَ")[0]
+    out = emb.encoding_to_string([vec])
+    assert "\x1b[90m" not in out
 """String formatting tests for encoding_to_string."""

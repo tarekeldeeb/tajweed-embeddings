@@ -198,12 +198,22 @@ def test_full_surah_has_rule_flags(emb):
 
 def test_maddah_above_attaches_to_alif(emb):
     """Decomposed alif+maddah should produce one letter with madd haraka."""
-    out = emb.text_to_embedding(1, 1, "آ")
+    out = emb.text_to_embedding(1, 7, "آ")
     assert len(out) == 1
     vec = out[0]
     haraka_slice = vec[emb.idx_haraka_start : emb.idx_haraka_start + emb.n_harakat]
     idx = int(haraka_slice.argmax())
     assert emb.index_to_haraka_state.get(idx) == "madd"
+
+
+def test_no_implicit_madd_for_bare_waw(emb):
+    """Unmarked waw in basmala should not get implicit madd haraka."""
+    vecs = emb.text_to_embedding(1)
+    # Waw before the final ba (index observed in debug traces)
+    vec = vecs[128]
+    haraka_slice = vec[emb.idx_haraka_start : emb.idx_haraka_start + emb.n_harakat]
+    idx = int(haraka_slice.argmax())
+    assert emb.index_to_haraka_state.get(idx) != "madd"
 
 
 # -------------------------------------------------------------------
