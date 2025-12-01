@@ -23,7 +23,7 @@ class SifatEmbedder:
             "infitah": "⟂",
             "itbaq": "▲",
             "idhlaq": "😮",
-            "ismat": "🤐",
+            "ismat": "😐",
         }
 
     @staticmethod
