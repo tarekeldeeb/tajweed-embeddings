@@ -1,7 +1,10 @@
+"""Tree utilities for rule classification."""
+
 from collections import namedtuple
 
 
-class Exemplar:
+class Exemplar:  # pylint: disable=too-few-public-methods
+    """Simple container for labeled attribute exemplars."""
     __slots__ = ("label", "attributes", "count")
 
     def __init__(self, label, attributes, count):
@@ -16,6 +19,7 @@ FinalTreeNode = namedtuple("FinalTreeNode", "label count")
 
 # I like namedtuples, maybe too much.
 def tree2json(node):
+    """Serialize a decision tree node to JSON-friendly dict."""
     # NB we don't save the counts - they're not needed at runtime.
     if hasattr(node, "label"):
         return {"label": node.label}
@@ -28,6 +32,7 @@ def tree2json(node):
 
 
 def json2tree(node):
+    """Deserialize a JSON dict into a decision tree node."""
     if "label" in node:
         return FinalTreeNode(node["label"], 0)
 

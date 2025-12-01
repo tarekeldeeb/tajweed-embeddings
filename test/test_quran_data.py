@@ -1,3 +1,5 @@
+"""Basic integrity checks for packaged Quran data."""
+
 import pytest
 
 def test_quran_has_expected_counts(emb):

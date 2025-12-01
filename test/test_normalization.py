@@ -1,3 +1,4 @@
+"""Normalization utility tests."""
 from tajweed_embeddings.util.normalization import normalize_superscript_alef
 
 

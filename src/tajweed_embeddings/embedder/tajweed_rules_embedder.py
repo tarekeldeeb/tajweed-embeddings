@@ -140,4 +140,3 @@ class TajweedRulesEmbedder:
                 flags[f_idx][idx_rule] = 1.0
 
         return flags
-"""Tajwīd rule spans, pause encoding, and helpers."""

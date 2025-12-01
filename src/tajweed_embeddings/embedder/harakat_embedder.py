@@ -48,9 +48,9 @@ class HarakatEmbedder:
             state: np.eye(self.n_harakat, dtype=float)[i]
             for i, state in enumerate(self.harakat_states)
         }
-        self.index_to_haraka_state: Dict[int, str] = {
-            i: state for i, state in enumerate(self.harakat_states)
-        }
+        self.index_to_haraka_state: Dict[int, str] = dict(
+            enumerate(self.harakat_states)
+        )
         self.default_haraka: np.ndarray = np.zeros(self.n_harakat, dtype=float)
         self.haraka_base_map: Dict[str, str] = {
             "َ": "fatha",
@@ -147,4 +147,3 @@ class HarakatEmbedder:
         if state == "sukun":
             return "sukun", False
         return state, False
-"""Haraka state definitions, symbols, and encode/decode helpers."""

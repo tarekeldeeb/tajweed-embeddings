@@ -2,11 +2,23 @@
 
 from pathlib import Path
 from typing import Iterable
+from urllib.error import URLError
+from urllib.request import urlopen
+
+try:
+    import requests  # type: ignore
+    from requests import RequestException
+except ImportError:  # pragma: no cover - optional dependency
+    requests = None
+    RequestException = Exception  # type: ignore
 
 
 DEFAULT_TANZIL_URLS = [
     # Matches rules_gen/tajweed_classifier.py default URL (marks preserved).
-    "https://tanzil.net/pub/download/index.php?marks=true&alif=false&quranType=uthmani&outType=txt-2&agree=true",
+    (
+        "https://tanzil.net/pub/download/index.php?"
+        "marks=true&alif=false&quranType=uthmani&outType=txt-2&agree=true"
+    ),
     # Fallback plain text URL.
     "https://tanzil.net/download/quran-uthmani.txt",
 ]
@@ -23,11 +35,6 @@ def download_quran_txt(target: Path, urls: Iterable[str] | None = None, timeout:
 
     url_list = list(urls) if urls is not None else DEFAULT_TANZIL_URLS
 
-    try:
-        import requests  # type: ignore
-    except Exception:
-        requests = None
-
     for url in url_list:
         try:
             if requests:
@@ -35,14 +42,12 @@ def download_quran_txt(target: Path, urls: Iterable[str] | None = None, timeout:
                 resp.raise_for_status()
                 data = resp.content
             else:
-                from urllib.request import urlopen
-
                 with urlopen(url, timeout=timeout) as fh:  # type: ignore
                     data = fh.read()
             if data:
                 target.write_bytes(data)
             if target.exists() and target.stat().st_size > 0:
                 return True
-        except Exception:
+        except (RequestException, URLError, OSError, TimeoutError):
             continue
     return target.exists() and target.stat().st_size > 0

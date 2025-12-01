@@ -1,6 +1,8 @@
+"""Convert Tanzil-formatted Uthmani text into quran.json."""
+
+import argparse
 import json
 import os
-import argparse
 import sys
 from pathlib import Path
 
@@ -9,6 +11,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from tajweed_embeddings.util.normalization import normalize_superscript_alef
+
+
+def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="quran.json"):
+    """Convert a Tanzil pipe-delimited text file into a JSON mapping."""
 
 def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="quran.json"):
     # ---------------------------------------
@@ -74,7 +80,7 @@ def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="q
 
     print("\n✅ SUCCESS — Quran JSON saved.")
     print(f"  Surahs: {len(quran)}")
-    for s in sorted(quran.keys(), key=lambda x: int(x))[:5]:
+    for s in sorted(quran.keys(), key=int)[:5]:
         print(f"  Surah {s}: {len(quran[s])} ayat")
     print("\nDone.\n")
 

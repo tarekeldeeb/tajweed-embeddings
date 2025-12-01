@@ -14,4 +14,6 @@ def test_all_ignored_text_returns_zero_vector(emb):
     out = emb.text_to_embedding(1, 1, txt)
     assert len(out) == 1
     assert out[0].sum() == 0
+
+
 """Tests for symbols that should be ignored or skipped in embeddings."""

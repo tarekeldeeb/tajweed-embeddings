@@ -9,12 +9,13 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from tajweed_embeddings.util import download_quran_txt
+from tajweed_embeddings.util.normalization import normalize_superscript_alef
+
 from .harakat_embedder import HarakatEmbedder
 from .letters_embedder import LettersEmbedder
 from .sifat_embedder import SifatEmbedder
 from .tajweed_rules_embedder import TajweedRulesEmbedder
-from tajweed_embeddings.util import download_quran_txt
-from tajweed_embeddings.util.normalization import normalize_superscript_alef
 
 
 class TajweedEmbedder:
@@ -36,9 +37,9 @@ class TajweedEmbedder:
         self._ensure_data_ready()
 
         # Load raw JSONs
-        self.quran = self._load_json("tajweed_embeddings.data", "quran.json")
-        self.sifat = self._load_json("tajweed_embeddings.data", "sifat.json")
-        self.rules = self._load_json("tajweed_embeddings.data", "tajweed.rules.json")
+        self.quran = self._load_json("quran.json")
+        self.sifat = self._load_json("sifat.json")
+        self.rules = self._load_json("tajweed.rules.json")
 
         if not isinstance(self.sifat, dict):
             raise ValueError("Invalid sifat.json format (expected dict)")
@@ -129,7 +130,7 @@ class TajweedEmbedder:
     # ------------------------------------------------------------------
     # INTERNAL HELPERS
     # ------------------------------------------------------------------
-    def _load_json(self, package: str, name: str):
+    def _load_json(self, name: str):
         """
         Load JSON directly from the on-disk data directory. This avoids stale
         package caches and ensures freshly generated files are picked up.
@@ -152,24 +153,6 @@ class TajweedEmbedder:
         quran_json = data_dir / "quran.json"
         rules_json = data_dir / "tajweed.rules.json"
 
-        # First attempt a lightweight restore from git if files are missing.
-        if (
-            not rules_json.exists()
-            or rules_json.stat().st_size == 0
-            or not self._json_type_matches(rules_json, list)
-        ):
-            self._restore_from_git(rules_json, "src/tajweed_embeddings/data/tajweed.rules.json")
-        if (
-            not quran_json.exists()
-            or quran_json.stat().st_size == 0
-            or not self._json_type_matches(quran_json, dict)
-        ):
-            self._restore_from_git(quran_json, "src/tajweed_embeddings/data/quran.json")
-
-        # If both are now valid, we're done.
-        if self._json_type_matches(rules_json, list) and self._json_type_matches(quran_json, dict):
-            return
-
         # Rebuild rules JSON or source text if missing or invalid.
         need_rules = (
             (not rules_json.exists())
@@ -180,16 +163,13 @@ class TajweedEmbedder:
 
         if need_rules or need_quran_txt:
             if not quran_txt.exists() or quran_txt.stat().st_size == 0:
-                # Try to restore the source text from git; if still missing, attempt download.
-                self._restore_from_git(quran_txt, "src/tajweed_embeddings/rules_gen/output/quran-uthmani.txt")
-            if not quran_txt.exists() or quran_txt.stat().st_size == 0:
                 download_quran_txt(quran_txt)
             if not quran_txt.exists() or quran_txt.stat().st_size == 0:
                 raise FileNotFoundError(
                     f"Missing Quran text at {quran_txt}. "
-                    "Run src/tajweed_embeddings/rules_gen/tajweed_classifier.py after installing its dependencies "
-                    "(pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
-                )
+                "Run src/tajweed_embeddings/rules_gen/tajweed_classifier.py after installing its "
+                "dependencies (pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
+            )
             cmd = [
                 "python3",
                 str(rules_gen_dir / "tajweed_classifier.py"),
@@ -201,14 +181,11 @@ class TajweedEmbedder:
                 # Feed the existing text via stdin.
                 with quran_txt.open("rb") as fh:
                     subprocess.run(cmd, cwd=repo_root, check=True, stdin=fh)
-            except Exception as exc:
-                # Fall back to restoring from git if available, otherwise bubble up.
-                self._restore_from_git(rules_json, "src/tajweed_embeddings/data/tajweed.rules.json")
-                if not self._json_type_matches(rules_json, list):
-                    raise RuntimeError(
-                        "Failed to generate tajweed.rules.json; ensure rules_gen dependencies "
-                        "are installed (pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
-                    ) from exc
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                raise RuntimeError(
+                    "Failed to generate tajweed.rules.json; ensure rules_gen dependencies "
+                    "are installed (pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
+                ) from exc
 
         # Build quran.json if missing or invalid.
         need_quran_json = (
@@ -231,11 +208,7 @@ class TajweedEmbedder:
                 "--output-filename",
                 "quran.json",
             ]
-            try:
-                subprocess.run(cmd, cwd=repo_root, check=True)
-            except Exception:
-                # Fall back to restoring from git if available.
-                self._restore_from_git(quran_json, "src/tajweed_embeddings/data/quran.json")
+            subprocess.run(cmd, cwd=repo_root, check=True)
 
         # Final sanity: raise if still missing/invalid so failures are explicit.
         if not self._json_type_matches(rules_json, list):
@@ -252,22 +225,8 @@ class TajweedEmbedder:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
             return isinstance(data, expected_type)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             return False
-
-    @staticmethod
-    def _restore_from_git(target: Path, git_path: str) -> None:
-        """
-        Restore a file from the current git HEAD. Best-effort; leaves the file
-        missing if git or the path is unavailable.
-        """
-        try:
-            blob = subprocess.check_output(["git", "show", f"HEAD:{git_path}"])
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(blob)
-        except Exception:
-            # Give up silently; caller will fail later if file still missing.
-            pass
 
     @staticmethod
     def _normalize_text(text: str) -> str:
@@ -787,11 +746,11 @@ class TajweedEmbedder:
                         line = _dim(line)
                     lines.append(line)
                 return "\n".join(lines)
-            else:
-                formatted = []
-                for idx, item in enumerate(encoding):
-                    formatted.append(f"[{idx}] {self.encoding_to_string(item, style=style)}")
-                return "\n".join(formatted)
+
+            formatted = []
+            for idx, item in enumerate(encoding):
+                formatted.append(f"[{idx}] {self.encoding_to_string(item, style=style)}")
+            return "\n".join(formatted)
 
         # Single encoding
         if style == "short":
@@ -812,7 +771,11 @@ class TajweedEmbedder:
             return line
         line = _render_long(encoding)
         decoded = _extract_values(encoding)
-        if (not decoded["haraka_state"] and not decoded["haraka_name"]) or ("silent" in decoded["rules"]):
+        if (
+            not decoded["haraka_state"]
+            and not decoded["haraka_name"]
+            or "silent" in decoded["rules"]
+        ):
             line = _dim(line)
         return line
 

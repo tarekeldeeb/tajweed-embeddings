@@ -1,3 +1,5 @@
+"""Long and stress-test cases for embeddings."""
+
 import pytest
 import numpy as np
 

@@ -3,7 +3,6 @@
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional
 
 try:
     from .tajweed_embedder import TajweedEmbedder
@@ -15,9 +14,19 @@ except ImportError:  # pragma: no cover - direct script execution fallback
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Render tajweed embeddings for a given sura/ayah.")
-    parser.add_argument("--sura", type=int, required=True, help="Sura number (1-114).")
-    parser.add_argument("--aya", type=int, default=None, help="Ayah number (1-based). Optional; if omitted, embeds full sura.")
+    """Parse CLI arguments for tajweed embedder."""
+    parser = argparse.ArgumentParser(
+        description="Render tajweed embeddings for a given sura/ayah."
+    )
+    parser.add_argument(
+        "--sura", type=int, required=True, help="Sura number (1-114)."
+    )
+    parser.add_argument(
+        "--aya",
+        type=int,
+        default=None,
+        help="Ayah number (1-based). Optional; if omitted, embeds full sura.",
+    )
     parser.add_argument(
         "--style",
         choices=["short", "long"],
@@ -40,6 +49,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Entry point for CLI execution."""
     args = parse_args()
     emb = TajweedEmbedder()
 

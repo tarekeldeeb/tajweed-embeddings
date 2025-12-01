@@ -113,4 +113,3 @@ class SifatEmbedder:
     def short_label(self, label: str) -> str:
         """Return a short, disambiguated label for display."""
         return self.short_label_map.get(label, label[:3])
-"""Compact ṣifāt encoder/decoder (6-bit representation)."""
