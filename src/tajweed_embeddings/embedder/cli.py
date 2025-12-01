@@ -3,6 +3,7 @@
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional
 
 try:
     from .tajweed_embedder import TajweedEmbedder
@@ -13,7 +14,7 @@ except ImportError:  # pragma: no cover - direct script execution fallback
     from tajweed_embeddings.embedder.tajweed_embedder import TajweedEmbedder
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     """Parse CLI arguments for tajweed embedder."""
     parser = argparse.ArgumentParser(
         description="Render tajweed embeddings for a given sura/ayah."
@@ -26,6 +27,12 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Ayah number (1-based). Optional; if omitted, embeds full sura.",
+    )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=1,
+        help="Number of consecutive ayat to embed starting at --aya (default: 1).",
     )
     parser.add_argument(
         "--style",
@@ -45,7 +52,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Quiet mode: skip banner/warnings.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main() -> None:
@@ -63,7 +70,7 @@ def main() -> None:
         )
         print(banner)
 
-    embeddings = emb.text_to_embedding(args.sura, args.aya, args.subtext)
+    embeddings = emb.text_to_embedding(args.sura, args.aya, args.subtext, count=args.count)
     print(emb.encoding_to_string(embeddings, style=args.style))
 
 

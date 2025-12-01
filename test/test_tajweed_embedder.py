@@ -216,6 +216,19 @@ def test_no_implicit_madd_for_bare_waw(emb):
     assert emb.index_to_haraka_state.get(idx) != "madd"
 
 
+def test_multi_ayah_count_embeds_consecutively(emb):
+    """count>1 should embed consecutive ayāt."""
+    vecs = emb.text_to_embedding(1, 1, count=2)
+    expected = len(emb.text_to_embedding(1, 1)) + len(emb.text_to_embedding(1, 2))
+    assert len(vecs) == expected
+
+
+def test_count_must_be_positive(emb):
+    """count must be > 0."""
+    with pytest.raises(ValueError):
+        emb.text_to_embedding(1, 1, count=0)
+
+
 def test_silent_on_alif_before_hamzat_wasl(emb):
     """Alif with no haraka before a spaced hamzat wasl should be marked silent."""
     if "silent" not in emb.rule_to_index:

@@ -360,6 +360,7 @@ class TajweedEmbedder:
         sura,
         ayah: Optional[int] = None,
         subtext: Optional[str] = None,
+        count: int = 1,
     ) -> List[np.ndarray]:
         """
         Create tajwīd embeddings for:
@@ -367,7 +368,10 @@ class TajweedEmbedder:
         - Full sūrah:     text_to_embedding(1)
         - Full āyah:      text_to_embedding(1, 1)
         - Custom subtext: text_to_embedding(1, 1, "بِسْمِ")
+        - Multiple āyāt:  text_to_embedding(1, 1, count=3)  → āyāt 1-3
         """
+        if count <= 0:
+            raise ValueError("count must be a positive integer")
         # Fast-path for decomposed alif + maddah
         if subtext == "آ":
             vec = np.zeros(self.embedding_dim, dtype=float)
@@ -542,20 +546,49 @@ class TajweedEmbedder:
             ayat_map = self.quran[sura_key]
             embeddings: List[np.ndarray] = []
             for a_num in sorted(ayat_map.keys(), key=int):
-                text = self._normalize_text(ayat_map[a_num])
+                text = ayat_map[a_num]
                 embeddings.extend(
                     _embed_segment(text, sura, int(a_num), True, True)
                 )
             return embeddings
 
-        text = self.get_text(sura, ayah, subtext)
-        return _embed_segment(
-            text,
-            sura,
-            ayah,
-            apply_rules=ayah is not None,
-            add_end_pause=(ayah is not None and subtext is None),
-        )
+        # If no ayah provided but custom text, embed as subtext
+        if ayah is None:
+            text = self.get_text(sura, ayah, subtext)
+            return _embed_segment(
+                text,
+                sura,
+                ayah,
+                apply_rules=False,
+                add_end_pause=False,
+            )
+
+        # Embed one or more consecutive ayāt starting at `ayah`.
+        sura_key = str(sura)
+        if sura_key not in self.quran:
+            raise ValueError(f"Sura {sura_key} not found in quran.json")
+        ayat_map = self.quran[sura_key]
+        start = int(ayah)
+        end = start + count - 1
+        for a_num in range(start, end + 1):
+            if str(a_num) not in ayat_map:
+                raise ValueError(f"Ayah {sura}:{a_num} not found in quran.json")
+
+        embeddings: List[np.ndarray] = []
+        for a_num in range(start, end + 1):
+            current_text = self.get_text(sura, a_num, subtext if a_num == start else None)
+            embeddings.extend(
+                _embed_segment(
+                    current_text,
+                    sura,
+                    a_num,
+                    apply_rules=True,
+                    add_end_pause=(subtext is None),
+                )
+            )
+            if subtext is not None:
+                break
+        return embeddings
 
     # ------------------------------------------------------------------
     # EMBEDDING → TEXT (rough reconstruction)
