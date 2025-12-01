@@ -284,6 +284,10 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "has_vowel_incl_tanween": any(s in c_ext for s in "ًٌٍَُِْ"),
                 "base_is_dagger_alif": c_base == "ٰ",
                 "is_hamzat_wasl": c_base == "ٱ",
+                "is_alif": c_base == "ا",
+                "is_alif_maksura": c_base == "ى",
+                "is_waw": c_base == "و",
+                "is_yeh": c_base == "ي",
             })
         if include_this:
             res.update({

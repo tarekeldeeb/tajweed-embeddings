@@ -216,6 +216,40 @@ def test_no_implicit_madd_for_bare_waw(emb):
     assert emb.index_to_haraka_state.get(idx) != "madd"
 
 
+def test_silent_on_alif_before_hamzat_wasl(emb):
+    """Alif with no haraka before a spaced hamzat wasl should be marked silent."""
+    if "silent" not in emb.rule_to_index:
+        pytest.skip("silent rule not present")
+    for sura_str, ayat_map in emb.quran.items():
+        for ayah_str, text in ayat_map.items():
+            chars = list(text)
+            target_raw = None
+            for i in range(len(chars) - 2):
+                if chars[i] in ("ا", "ى") and chars[i + 1].isspace() and chars[i + 2] == "ٱ":
+                    target_raw = i
+                    break
+            if target_raw is None:
+                continue
+
+            vecs = emb.text_to_embedding(int(sura_str), int(ayah_str))
+            filtered_idx = -1
+            current_filtered = -1
+            for raw_idx, ch in enumerate(chars):
+                norm_ch = emb.char_aliases.get(ch, ch) if hasattr(emb, "char_aliases") else ch
+                if norm_ch in emb.letters:
+                    current_filtered += 1
+                    if raw_idx == target_raw:
+                        filtered_idx = current_filtered
+                        break
+            if filtered_idx < 0 or filtered_idx >= len(vecs):
+                continue
+            vec = vecs[filtered_idx]
+            silent_idx = emb.rule_to_index["silent"]
+            assert vec[emb.idx_rule_start + silent_idx] > 0
+            return
+    pytest.fail("Did not find alif before hamzat wasl to validate silent rule")
+
+
 # -------------------------------------------------------------------
 # COVERAGE / CONSISTENCY TESTS
 # -------------------------------------------------------------------

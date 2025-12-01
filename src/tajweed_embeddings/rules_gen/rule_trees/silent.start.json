@@ -46,7 +46,21 @@
         "value": 0.5
       },
       "lt": {
-        "label": 0
+        "attribute": "0_is_alif_maksura",
+        "gt": {
+          "attribute": "0_has_vowel_incl_tanween",
+          "gt": {
+            "label": 0
+          },
+          "lt": {
+            "label": 1
+          },
+          "value": 0.5
+        },
+        "lt": {
+          "label": 0
+        },
+        "value": 0.5
       },
       "value": 0.5
     },

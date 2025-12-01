@@ -139,4 +139,18 @@ class TajweedRulesEmbedder:
                     continue
                 flags[f_idx][idx_rule] = 1.0
 
+        # Fallback: mark silent when an alif/ya is followed (optionally via spaces) by hamzat wasl.
+        silent_idx = self.rule_to_index.get("silent")
+        if silent_idx is not None:
+            for i, ch in enumerate(chars):
+                if ch not in {"ا", "ى"}:
+                    continue
+                j = i + 1
+                while j < raw_len and chars[j].isspace():
+                    j += 1
+                if j < raw_len and chars[j] == "ٱ":
+                    f_idx = raw_to_filtered[i]
+                    if 0 <= f_idx < filtered_len:
+                        flags[f_idx][silent_idx] = 1.0
+
         return flags
