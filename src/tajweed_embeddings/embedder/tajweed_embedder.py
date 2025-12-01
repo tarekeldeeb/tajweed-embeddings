@@ -748,7 +748,7 @@ class TajweedEmbedder:
             pause_val = decoded["pause_value"] if decoded["pause_value"] else ""
             sifat_vals = decoded["sifat_values"]
             if sifat_vals:
-                sifat_val = "/".join(self.sifat_embedder.short_label(s) for s in sifat_vals)
+                sifat_val = " ".join(self.sifat_embedder.short_label(s) for s in sifat_vals)
             else:
                 sifat_val = ""
             rules = decoded["rules"]

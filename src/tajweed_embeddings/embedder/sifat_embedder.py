@@ -13,17 +13,17 @@ class SifatEmbedder:
         # jahr/hams (1), strength trio (2), isti'la/istifal (1), infitah/itbaq (1), idhlaq/ismat (1)
         self.n_sifat: int = 6
         self.short_label_map = {
-            "jahr": "jah",
-            "hams": "ham",
-            "rikhwah": "rik",
-            "tawassut": "taw",
-            "shiddah": "shi",
-            "isti'la": "isl",
-            "istifal": "isf",
-            "infitah": "inf",
-            "itbaq": "itb",
-            "idhlaq": "idh",
-            "ismat": "ism",
+            "jahr": "🔊",
+            "hams": "🤫",
+            "rikhwah": "💨",
+            "tawassut": "➖",
+            "shiddah": "🚫",
+            "isti'la": "🔼",
+            "istifal": "🔻",
+            "infitah": "⟂",
+            "itbaq": "▲",
+            "idhlaq": "😮",
+            "ismat": "🤐",
         }
 
     @staticmethod
