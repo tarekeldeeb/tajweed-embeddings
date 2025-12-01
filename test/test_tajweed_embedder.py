@@ -283,3 +283,67 @@ def test_madd_munfasil_and_muttasil_present(emb):
             break
     missing = [r for r, v in seen.items() if not v]
     assert not missing, f"Missing derived madd spans: {missing}"
+
+
+def test_madd_priority_strips_weaker_flags(emb):
+    """Ensure madd priority removes weaker rules when spans overlap."""
+    priority = ["madd_6", "madd_muttasil", "madd_munfasil", "madd_246", "madd_2"]
+    present = [r for r in priority if r in emb.rule_to_index]
+    if len(present) < 2:
+        pytest.skip("Not enough madd rules present to test priority")
+
+    def strongest(active_rules):
+        for r in priority:
+            if r in active_rules:
+                return r
+        return None
+
+    for vecs in (
+        emb.text_to_embedding(1, 1),
+        emb.text_to_embedding(2, 4),
+        emb.text_to_embedding(2, 5),
+    ):
+        for v in vecs:
+            active = [
+                r
+                for r in present
+                if v[emb.idx_rule_start + emb.rule_to_index[r]] > 0
+            ]
+            if len(active) <= 1:
+                continue
+            top = strongest(active)
+            assert top is not None
+            assert active == [top], f"Weaker madd present alongside {top}: {active}"
+
+
+def test_no_duplicate_ikhfa_spans(emb):
+    """Ikhfa spans should not overlap within an āyah."""
+    if "ikhfa" not in emb.rule_to_index:
+        pytest.skip("ikhfa not present in rules JSON")
+    for (sura, ayah), anns in emb.tajweed_rules.rules_index.items():
+        covered = set()
+        for ann in anns:
+            if ann.get("rule") != "ikhfa":
+                continue
+            start = int(ann.get("start", 0))
+            end = int(ann.get("end", 0))
+            for idx in range(start, end):
+                assert idx not in covered, f"Duplicate ikhfa coverage at {sura}:{ayah} index {idx}"
+                covered.add(idx)
+
+
+def test_madd_munfasil_and_muttasil_present(emb):
+    """Ensure derived madd spans surface somewhere in the corpus."""
+    required = [r for r in ("madd_munfasil", "madd_muttasil") if r in emb.rule_to_index]
+    if not required:
+        pytest.skip("Derived madd rules not present in rules JSON")
+    seen = {r: False for r in required}
+    for anns in emb.tajweed_rules.rules_index.values():
+        for ann in anns:
+            r = ann.get("rule")
+            if r in seen:
+                seen[r] = True
+        if all(seen.values()):
+            break
+    missing = [r for r, v in seen.items() if not v]
+    assert not missing, f"Missing derived madd spans: {missing}"

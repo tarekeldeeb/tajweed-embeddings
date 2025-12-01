@@ -207,6 +207,7 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "is_dagger_alif": c == "ٰ",
                 "is_small_yeh": c == "ۦ",
                 "is_small_waw": c == "ۥ",
+                "is_long_vowel": c in ("ا", "آ", "ى", "ي", "و", "ٰ"),
                 "is_final": end_i >= len(txt) or txt[end_i] == " ",
                 })
     elif rule == "madd_246":
@@ -454,6 +455,32 @@ def label_ayah(params):
                     "start": annotations_run[k].popleft() + offset,
                     "end": i + 1 + offset
                 })
+
+    # Enforce madd priority: strongest kept, weaker removed when spans overlap exactly.
+    madd_priority = {
+        "madd_6": 0,
+        "madd_muttasil": 1,
+        "madd_munfasil": 2,
+        "madd_246": 3,
+        "madd_2": 4,
+    }
+    spans: dict[tuple[int, int], list[dict]] = {}
+    for ann in annotations:
+        rule = ann.get("rule")
+        if rule not in madd_priority:
+            continue
+        key = (int(ann.get("start", 0)), int(ann.get("end", 0)))
+        spans.setdefault(key, []).append(ann)
+    to_drop: set[int] = set()
+    for span, anns in spans.items():
+        strongest = min(anns, key=lambda a: madd_priority.get(a.get("rule"), 99))
+        keep_rule = strongest.get("rule")
+        for ann in anns:
+            if ann is strongest or ann.get("rule") == keep_rule:
+                continue
+            to_drop.add(id(ann))
+    if to_drop:
+        annotations = [a for a in annotations if id(a) not in to_drop]
 
     assert all(len(q) == 0 for q in annotations_run.values()), \
         "Some rules left hanging at end of ayah @ %d: %s (%d:%d) %s" % \
