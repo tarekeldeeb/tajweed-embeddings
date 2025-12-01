@@ -394,12 +394,16 @@ class TajweedEmbedder:
         ) -> List[np.ndarray]:
             original_text = text
             text = self._normalize_text(text)
+            # Collapse decomposed alif+maddah into precomposed glyph to avoid extra vector.
+            text = text.replace("آ", "آ")
             chars = list(text)
             filtered_len = 0
             word_last_indices: set[int] = set()
             current_word: List[int] = []
             for ch in chars:
                 norm_ch = self.char_aliases.get(ch, ch)
+                if norm_ch == "آ":
+                    norm_ch = "ا"
                 if norm_ch in self.letters:
                     current_word.append(filtered_len)
                     filtered_len += 1
@@ -429,6 +433,10 @@ class TajweedEmbedder:
             filtered_idx = 0
 
             for idx_char, ch in enumerate(chars):
+                madd_on_letter = False
+                if ch == "آ":
+                    ch = "ا"
+                    madd_on_letter = True
                 ch = self.char_aliases.get(ch, ch)
                 if ch not in self.letters:
                     if last_vec is not None:
@@ -477,7 +485,7 @@ class TajweedEmbedder:
                     self.idx_haraka_start : self.idx_haraka_start + self.n_harakat
                 ] = self.default_haraka
                 next_ch = chars[idx_char + 1] if idx_char + 1 < len(chars) else None
-                if ch == "آ" or (next_ch and self.haraka_base_map.get(next_ch) == "madd"):
+                if madd_on_letter or (next_ch and self.haraka_base_map.get(next_ch) == "madd"):
                     vec[
                         self.idx_haraka_start : self.idx_haraka_start
                         + self.n_harakat

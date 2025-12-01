@@ -65,6 +65,7 @@ def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="q
                 print("⚠️ Skipping malformed line:", line)
                 continue
 
+            # Normalize superscript alef; keep maddah marks intact.
             text = normalize_superscript_alef(text)
 
             if sura not in quran:

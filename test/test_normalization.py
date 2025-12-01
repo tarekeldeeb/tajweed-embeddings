@@ -9,3 +9,21 @@ def test_tatweel_before_dagger_alif_removed():
 
 def test_unrelated_tatweel_preserved():
     assert normalize_superscript_alef("بــت") == "بــت"
+
+
+def test_maddah_is_preserved():
+    """Combining maddah should remain after normalization."""
+    src = "جَآءَ"
+    assert normalize_superscript_alef(src) == src
+
+
+def test_dagger_alif_is_preserved():
+    """Dagger alif should remain after normalization."""
+    src = "حٰقّ"
+    assert normalize_superscript_alef(src) == src
+
+
+def test_tatweel_is_stripped():
+    """Tatweel should be removed when normalizing."""
+    src = "حـٰ"
+    assert normalize_superscript_alef(src) == "حٰ"

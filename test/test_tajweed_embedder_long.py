@@ -15,7 +15,15 @@ SPECIAL_SYMBOLS = [
 def count_letters(emb, text):
     """Utility: count only letters (not diacritics, not spaces, not symbols)."""
     normalized = emb._normalize_text(text)  # type: ignore[attr-defined]
-    return sum(ch in emb.letters for ch in normalized)
+    normalized = normalized.replace("آ", "آ")
+    count = 0
+    for ch in normalized:
+        norm_ch = emb.char_aliases.get(ch, ch) if hasattr(emb, "char_aliases") else ch
+        if norm_ch == "آ":
+            norm_ch = "ا"
+        if norm_ch in emb.letters:
+            count += 1
+    return count
 
 
 # -------------------------------------------------------------------------

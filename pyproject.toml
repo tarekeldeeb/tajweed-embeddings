@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tajweed-embeddings"
-version = "0.1.5"
+version = "0.1.6"
 description = "Quran Tajweed Embedding Generator"
 authors = [{ name="Tarek Eldeeb" }]
 requires-python = ">=3.10"

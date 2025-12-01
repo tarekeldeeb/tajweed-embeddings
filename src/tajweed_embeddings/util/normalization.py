@@ -21,8 +21,7 @@ def normalize_superscript_alef(text: str) -> str:
         return text
     text = _TATWEEL_BEFORE_DAGGER.sub("", text)
     text = _TATWEEL_BEFORE_MADDAH.sub("", text)
-    text = _ALIF_MADDAH_DECOMP.sub("\u0627" + _PLACEHOLDER, text)
-    text = text.replace(_MADDAH, _PLACEHOLDER)
+    # Preserve maddah mark; keep decomposed alif+maddah as-is.
     return text
 
 

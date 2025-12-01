@@ -250,6 +250,15 @@ def test_silent_on_alif_before_hamzat_wasl(emb):
     pytest.fail("Did not find alif before hamzat wasl to validate silent rule")
 
 
+def test_composed_alif_madd_produces_single_vector(emb):
+    """Composed alif+maddah should map to one vector with madd haraka."""
+    vecs = emb.text_to_embedding(1, 7, "آل")
+    assert len(vecs) == 2
+    haraka_slice = vecs[0][emb.idx_haraka_start : emb.idx_haraka_start + emb.n_harakat]
+    idx = int(haraka_slice.argmax())
+    assert emb.index_to_haraka_state.get(idx) == "madd"
+
+
 # -------------------------------------------------------------------
 # COVERAGE / CONSISTENCY TESTS
 # -------------------------------------------------------------------
