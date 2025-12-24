@@ -17,18 +17,26 @@ Tajwīd-aware embedding engine for Qur'ān (Uthmānī script). Encodes letters, 
 - Auto-bootstrap for missing data files (downloads Tanzil text and regenerates spans when absent).
 - CLI (`tajweed_embedder`) and pytest coverage.
 
-## Embedding Layout (dim 90)
+## Embedding Layout (dim 91)
 
 ```
 [ letters | haraka | pause | sifat | rules ]
-    47       12        3       6       22
+    47       12        3       6       23
 ```
 
 - **Letters:** Uthmānī glyph set; pause glyphs live in the pause slice, not the letter one-hot.
 - **Haraka:** Explicit states including shadda combos, tanwīn, madd, sukūn, and zero-sukūn.
-- **Pause:** 3-bit stop categories (0=do_not_stop, 4=qeli/end_of_ayah, 6=lazem, etc.).
+- **Pause:** 3-bit stop categories:
+  - 0: do_not_stop
+  - 1: word_boundary_emergency (default at word ends without explicit marks)
+  - 2: seli (↦)
+  - 3: jaiz (≈)
+  - 4: taanoq (⋀)
+  - 5: qeli_or_ayah_end (⏹)
+  - 6: sakta (˽)
+  - 7: lazem (⛔)
 - **Ṣifāt:** 6-bit compact vector (jahr/hams; rikhwah–tawassut–shiddah; isti'la/istifal; infitah/itbaq; idhlaq/ismat).
-- **Rules:** 22 flags from `tajweed.rules.json` plus inline markers.
+- **Rules:** 23 flags (19 from `tajweed.rules.json` spans + 4 inline marker rules: tas_heel, imala, ishmam, optional_seen).
 
 ## Install
 
