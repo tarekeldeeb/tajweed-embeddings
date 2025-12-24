@@ -378,15 +378,10 @@ def exemplars_for(rule, txt, auxiliary_stream=None):
         "idghaam_mutaqaribayn": (1, 2),
         "idghaam_no_ghunnah": (0, 3),
         "idghaam_shafawi": (0, 2),
-<<<<<<< HEAD
-        "ikhfa": (0, 3),
-        "ghunnah_tafkheem": (0, 3),
-=======
         # Extend lookahead for ikhfa variants to skip pause glyphs/spaces between
         # tanween/noon and the actual ikhfa letter (e.g., \"ۗ \" before the next word).
         "ikhfa": (0, 5),
         "ghunnah_tafkheem": (0, 5),
->>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
         "ikhfa_shafawi": (0, 2),
         "iqlab": (0, 2),
         "lam_shamsiyyah": (1, 1),
