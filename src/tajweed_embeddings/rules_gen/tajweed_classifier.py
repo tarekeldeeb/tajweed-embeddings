@@ -51,7 +51,8 @@ RULE2E = {
     'madd_munfasil'         : 's',
     'madd_muttasil'         : 't',
     'qalqalah'              : 'q',
-    'silent'                : 'e'
+    'silent'                : 'e',
+    'ghunnah_tafkheem'       : 'p'
 }
 
 class embedding:
@@ -164,6 +165,25 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "is_tanween": any(s == c for s in "ًٌٍ"),
                 "is_final": end_i >= len(txt) or txt[end_i] == " ",
             })
+    elif rule == "ghunnah_tafkheem":
+        # Same structure as "ikhfa", but adds a feature for the subset
+        # of ikhfa letters that are always heavy (tafkhim) and actually belong to ikhfa:
+        # {ص, ض, ط, ق, ظ}
+        if not include_this:
+            res.update({
+                "has_implicit_sukoon": not any(s in c_ext for s in "ًٌٍَُِْ"),
+                # keep ikhfa-set feature (optional but useful if you want to reuse ikhfa logic)
+                "base_is_ikhfa_set": c_base in "تثجدذزسشصضطظفقك",
+                # NEW: the correct intersection subset for your rule
+                "base_is_ikhfa_tafkheem_set": c_base in "صضطقظق",
+            })
+        if include_this:
+            res.update({
+                "is_noon": c == "ن",
+                "is_high_noon": c == "ۨ",
+                "is_tanween": any(s == c for s in "ًٌٍ"),
+                "is_final": end_i >= len(txt) or txt[end_i] == " ",
+            })        
     elif rule == "ikhfa_shafawi":
         if not include_this:
             res.update({
@@ -180,7 +200,7 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
             res.update({
                 "is_tanween": c in "ًٌٍ",
                 "is_base": (unicodedata.category(c) != "Mn" and c != "ـ") or c == "ٰ",
-            })
+            })      
     elif rule == "lam_shamsiyyah":
         if not include_this:
             res.update({
@@ -327,6 +347,7 @@ def exemplars_for(rule, txt, auxiliary_stream=None):
         "idghaam_no_ghunnah": (0, 3),
         "idghaam_shafawi": (0, 2),
         "ikhfa": (0, 3),
+        "ghunnah_tafkheem": (0, 3),
         "ikhfa_shafawi": (0, 2),
         "iqlab": (0, 2),
         "lam_shamsiyyah": (1, 1),

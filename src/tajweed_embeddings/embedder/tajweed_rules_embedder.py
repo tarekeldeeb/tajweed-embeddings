@@ -99,19 +99,41 @@ class TajweedRulesEmbedder:
         Returns rule flags aligned to the filtered character sequence (letters only).
         Each element is a rule one-hot vector of length `n_rules` for that filtered index.
         """
-        raw_len = len(chars)
+        norm_len = len(chars)
 
-        raw_to_filtered: List[int] = [-1] * raw_len
+        # First pass: map normalized text indices → filtered indices.
+        norm_to_filtered: List[int] = [-1] * norm_len
         filtered_len = 0
         for i, ch in enumerate(chars):
             norm_ch = self.char_aliases.get(ch, ch)
+            if norm_ch == "آ":
+                # Match TajweedEmbedder behavior: treat alif maddah as a
+                # regular alif for indexing, so rule flags stay aligned
+                # with the embedding sequence.
+                norm_ch = "ا"
             if norm_ch in self.letters:
-                raw_to_filtered[i] = filtered_len
+                norm_to_filtered[i] = filtered_len
                 filtered_len += 1
             elif i > 0 and (
                 norm_ch in self.diacritic_chars or norm_ch in self.pause_chars
             ):
-                raw_to_filtered[i] = raw_to_filtered[i - 1]
+                norm_to_filtered[i] = norm_to_filtered[i - 1]
+
+        # Build a mapping for the original classifier indices (which were produced
+        # before collapsing the decomposed maddah sequence \"آ\" into \"آ\").
+        # Each \"آ\" contributes two original codepoints, both of which should map
+        # to the same filtered index.
+        orig_to_norm: List[int] = []
+        for norm_idx, ch in enumerate(chars):
+            orig_to_norm.append(norm_idx)
+            if ch == "آ":
+                orig_to_norm.append(norm_idx)
+
+        raw_to_filtered: List[int] = [
+            norm_to_filtered[norm_idx] if 0 <= norm_idx < norm_len else -1
+            for norm_idx in orig_to_norm
+        ]
+        raw_len = len(raw_to_filtered)
 
         flags = [np.zeros(self.n_rules, dtype=float) for _ in range(filtered_len)]
 
@@ -146,11 +168,11 @@ class TajweedRulesEmbedder:
                 if ch not in {"ا", "ى"}:
                     continue
                 j = i + 1
-                while j < raw_len and chars[j].isspace():
+                while j < norm_len and chars[j].isspace():
                     j += 1
-                if j < raw_len and chars[j] == "ٱ":
-                    f_idx = raw_to_filtered[i]
-                    if 0 <= f_idx < filtered_len:
-                        flags[f_idx][silent_idx] = 1.0
+                if j < norm_len and chars[j] == "ٱ":
+                    f_idx_norm = norm_to_filtered[i]
+                    if 0 <= f_idx_norm < filtered_len:
+                        flags[f_idx_norm][silent_idx] = 1.0
 
         return flags

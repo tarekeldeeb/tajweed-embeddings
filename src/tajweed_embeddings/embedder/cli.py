@@ -59,6 +59,7 @@ def main() -> None:
     """Entry point for CLI execution."""
     args = parse_args()
     emb = TajweedEmbedder()
+    embeddings = emb.text_to_embedding(args.sura, args.aya, args.subtext, count=args.count)
 
     if not args.quiet:
         banner = (
@@ -69,20 +70,19 @@ def main() -> None:
             "║                                                          ║\n"
             "║ ┌ Index: row number                                      ║\n"
             "║ │  ┌ Letter: glyph                                       ║\n"
-            "║ │  │   ┌ Tashkeel: Kasra ‿ - Fatha ^ - .. etc            ║\n"
+            "║ │  │   ┌ Tashkeel: Kasra ‿ , Fatha ^ , .. etc            ║\n"
             "║ │  │   │   ┌ Pause: stop mark (0/4/6 etc)                ║\n"
-            "║ │  │   │   │   ┌  Jahr 🔊 - hams 🤫                      ║\n"
-            "║ │  │   │   │   │  ┌ Rikhw 💨 - Tawasot ➖ - Shidda       ║\n"
-            "║ │  │   │   │   │  │  ┌ Isti'la 🔼 - istifal 🔻           ║\n"
-            "║ │  │   │   │   │  │  |  ┌ infitah ▲ - itbaq ⟂            ║\n"
-            "║ │  │   │   │   │  │  |  |  ┌ idhlaq 😮 - ismat 😐        ║\n"
-            "║ │  │   │   │   │  │  |  |  |    ┌ Rules: tajweed flags   ║\n"
-            "║ │  │   │   │   │  │  |  |  |    |                        ║\n"
-            "╚═╧══╧═══╧═══╧═══╧══╧══╧══╧══╧════╧════════════════════════╝"
+            "║ │  │   │   │   ┌ Jahr 🔊 , Hams 🤫                       ║\n"
+            "║ │  │   │   │   │  ┌ Rikhw 💨 , Tawasot ➖ , Shidda 🚫    ║\n"
+            "║ │  │   │   │   │  │  ┌ Isti'la 🔼 , Istifal 🔻           ║\n"
+            "║ │  │   │   │   │  │  │  ┌ Infitah ▲ , Itbaq ⟂            ║\n"
+            "║ │  │   │   │   │  │  │  │  ┌ Idhlaq 😮 , Ismat 😐        ║\n"
+            "║ │  │   │   │   │  │  │  │  │    ┌ Rules: Tajweed flags   ║\n"
+            "║ │  │   │   │   │  │  │  │  │    │                        ║\n"
+            "╚═╪══╪═══╪═══╪═══╪══╪══╪══╪══╪════╪════════════════════════╝"
         )
         print(banner)
 
-    embeddings = emb.text_to_embedding(args.sura, args.aya, args.subtext, count=args.count)
     print(emb.encoding_to_string(embeddings, style=args.style))
 
 

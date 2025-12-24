@@ -1,211 +1,89 @@
 # Quran Tajweed Embeddings – Tajwīd-Aware Embedding Engine for Quranic Recitation AI
-  
+
 <!-- GitHub Actions Tests -->
 [![Test Status](https://github.com/tarekeldeeb/tajweed-embeddings/actions/workflows/tests.yml/badge.svg)](https://github.com/tarekeldeeb/tajweed-embeddings/actions/workflows/tests.yml)
 
-This project provides a **complete embedding engine** for Qur'ān text that encodes:
-
-- Arabic letter identity (one-hot)
-- Harakāt (fatḥah, kasrah, ḍammah, sukoon, shaddah)
-- Ṣifāt al-ḥurūf (optimized bits: jahr/hams, strength trio, isti'la/istifal, infitah/itbaq, idhlaq/ismat)
-- Tajwīd rule flags based on structured JSON rule spans  
-  (idghām, ikhfa’, iqlāb, madd types, qalqalah, ghunnah…)
-- Automatic reconstruction from embedding → text
-- Similarity scoring (cosine)
-- pytest-based test suite
-
-It is designed as the **core feature extractor** for a full Tajwīd Teaching AI:
-
-- STT → phoneme alignment  
-- Tajwīd error detection  
-- Recitation scoring  
-- Feedback generation
-
-This repository implements the **embedding layer**, not the full pipeline.
+Tajwīd-aware embedding engine for Qur'ān (Uthmānī script). Encodes letters, harakāt, pause marks, ṣifāt, and tajwīd rules from curated spans. Ships with packaged Quran/rule data, a CLI for inspection, and a full pytest suite.
 
 ---
 
-## 🚀 Features
+## What You Get
 
-### ✔ **Tajweed-aware embeddings**
+- Tajwīd embeddings for the full corpus (114 sūrahs / 6236 āyāt), one vector per letter/marker.
+- JSON-backed rule spans (`tajweed.rules.json`) plus inline markers (iqlab, tas-heel, imala, ishmam, optional seen).
+- Compact 6-bit ṣifāt encoding and explicit haraka states (tanwīn, shadda combos, madd, alternate sukūn).
+- Pretty-printing and reconstruction via `encoding_to_string(style="short"|"long")` and `embedding_to_text`.
+- Similarity helpers (`compare`, `score`) for alignment/scoring workflows.
+- Auto-bootstrap for missing data files (downloads Tanzil text and regenerates spans when absent).
+- CLI (`tajweed_embedder`) and pytest coverage.
 
-Qur’ān string is tokenized to phonemes, which are transformed into numeric vectors containing:
-
-1. **Letter one-hot**
-2. **Harakah one-hot**
-3. **Ṣifāt compact bit vector (5 components / 6 bits)**
-4. **Tajwīd rule flags (n rules)**
-
-### ✔ **JSON-based Tajwīd rule spans**
-
-Rules are not guessed — they come from curated JSON files.
-
-### ✔ **Embedding → text reconstruction**
-
-Allows round-trip conversion for testing and diagnostics.
-
-### ✔ **Scoring and similarity**
-
-Cosine similarity over embedding sequences.
-
-### ✔ **Full pytest test suite**
-
-Ensures correct behavior across:
-
-- Harakāt
-- Shaddah
-- Unknown letters
-- Empty input
-- Long sequences
-- Reconstruction stability
-
-### 🧩 Embedding Vector Layout
-
-Each phoneme (letter + optional marks) becomes one vector:
-
-- `letters` (one-hot) — includes Qur’ān glyph variants and tajwīd markers
-- `haraka` (12 states) — fatha/‿/و/°/tanwīn, shadda combos (e.g., fatha+shadda = ώ), madd
-- `pause` (3-bit code) — 0 do-not-stop, 1 seli, 2 jaiz, 3 taanoq, 4 qeli/end-ayah, 5 sakta, 6 lazem
-- `sifat` (12 floats) — jahr, hams, shiddah, tawassut, rikhwah, isti'la, istifal, itbaq, infitah, qalqalah, ghunnah, tafkhim
-- `rules` (N bits) — tajwīd rule spans + inline markers
-
-Vector layout (indices):
+## Embedding Layout (dim 90)
 
 ```
 [ letters | haraka | pause | sifat | rules ]
-    L        12       3       12       N
+    47       12        3       6       22
+```
+
+- **Letters:** Uthmānī glyph set; pause glyphs live in the pause slice, not the letter one-hot.
+- **Haraka:** Explicit states including shadda combos, tanwīn, madd, sukūn, and zero-sukūn.
+- **Pause:** 3-bit stop categories (0=do_not_stop, 4=qeli/end_of_ayah, 6=lazem, etc.).
+- **Ṣifāt:** 6-bit compact vector (jahr/hams; rikhwah–tawassut–shiddah; isti'la/istifal; infitah/itbaq; idhlaq/ismat).
+- **Rules:** 22 flags from `tajweed.rules.json` plus inline markers.
+
+## Install
+
+Runtime dependency is `numpy`; `requests`/`tqdm` are optional for regenerating data.
+
+```bash
+python3 -m pip install .
+# or for development/testing
+python3 -m pip install -e .[test]
+```
+
+## Quickstart (Python)
+
+```python
+from tajweed_embeddings import TajweedEmbedder
+
+emb = TajweedEmbedder()
+
+vecs = emb.text_to_embedding(1, 1)              # sura 1, āyah 1
+sub = emb.text_to_embedding(1, 1, "بِسْمِ")     # custom text (rules skipped)
+
+print(emb.embedding_dim)                        # 90
+print(emb.encoding_to_string(sub, style="short"))
+
+round_trip = emb.embedding_to_text(sub)
+score = emb.score(sub, emb.text_to_embedding(1, 1, "بَسْمِ"))
 ```
 
 Notes:
-- Long vowels (ا، و، ي، ى، آ، ٰ) get implicit `madd` if no explicit haraka is present.
-- Pause marks apply to the preceding letter; non-final phonemes in a word are forced to “do not stop”.
-- End of āyah auto-sets pause category 4.
-- `encoding_to_string` supports `style="short"` (symbols only, aligned columns) and `style="long"` (labeled).
+- `subtext` embeds arbitrary strings; diacritics/pause marks attach to the previous letter and do not increase vector count.
+- `count` embeds consecutive āyāt starting at `ayah`.
+- `encoding_to_string(style="long")` produces labeled, multi-field output; `"short"` is tabular.
 
----
+## CLI
 
-## 🔧 Installation
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install numpy pytest
-```
-
----
-
-## 📦 Quick Setup
-
-```python
-from tajweed_embedder import TajweedEmbedder
-
-emb = TajweedEmbedder()
-```
-
-## Usage Examples
-
-### 1️⃣ Embedding a full āyah
-
-```python
-vecs = emb.text_to_embedding(1, 1)
-print(len(vecs))
-```
-
-Expected:
-
-```text
-38
-```
-
-### 2️⃣ Embedding a sub-string
-
-```python
-emb.text_to_embedding(1, 1, "بِسْ")
-```
-
-Expected: `3 vectors`
-
-### 3️⃣ Embedding a full surah
-
-```python
-full = emb.text_to_embedding(1)
-len(full)
-```
-
-Expected: `112`
-
-### 4️⃣ Embedding → Text (Reversible)
-
-```python
-txt = emb.embedding_to_text(emb.text_to_embedding(1, 1, "بِسْمِ"))
-print(txt)
-```
-
-Expected: `بِسْمِ`
-
-### 5️⃣ Cosine Similarity
-
-```python
-e1 = emb.text_to_embedding(1, 1, "بِسْ")
-e2 = emb.text_to_embedding(1, 1, "بَسْ")
-emb.compare(e1, e2)
-```
-
-Expected: `~0.95`
-
-### 6️⃣ Per-character score
-
-```python
-emb.score(e1, e2)
-```
-
-Expected: `~0.95`
-
-### 7️⃣ Arabic non-Quranic text
-
-```python
-emb.text_to_embedding(1, 1, "سلام عليكم")
-```
-
-Expected: length preserved.
-
-### 8️⃣ Special Quran symbols
-
-```python
-emb.text_to_embedding(1, 1, "بِسْمِ ۩ اللَّهِ")
-```
-
-Symbols produce zero vectors.
-
-### 9️⃣ Cross-ayah concatenation
-
-```python
-q = emb.quran["1"]
-combined = q["1"] + " " + q["2"]
-emb.text_to_embedding(1, subtext=combined)
-```
-
-Expected length: 76
-
-### 🔟 Random fuzzing
-
-```python
-seq = "".join(random.choice(list(emb.letters)+list(emb.harakat)) for _ in range(50))
-emb.text_to_embedding(1, 1, seq)
-```
-
-Expected: 50
-
----
-
-## 🧪 Running Tests
+Inspect embeddings without writing code:
 
 ```bash
+tajweed_embedder --sura 1 --aya 1 --style short
+tajweed_embedder --sura 2 --aya 1 --count 3 --style long
+```
+
+Outputs a human-readable view of the vectors (for inspection; not the raw numeric arrays).
+
+## Data + Regeneration
+
+Packaged data lives in `src/tajweed_embeddings/data/` (`quran.json`, `sifat.json`, `tajweed.rules.json`). If any file is missing or empty, `TajweedEmbedder` will download the Tanzil Uthmani text and regenerate spans via `rules_gen/tajweed_classifier.py` (requires `requests` and `tqdm`). Corpus coverage: 114 sūrahs / 6236 āyāt.
+
+## Tests
+
+```bash
+python3 -m pip install -e .[test]
 pytest -q
 ```
 
----
-
 ## License
 
-Please contact author: Tarek Eldeeb
+Dual-licensed: Waqf Public License 2.0 for non-commercial use; commercial or other uses require permission. See `LICENSE`.
