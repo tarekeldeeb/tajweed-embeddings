@@ -50,34 +50,39 @@ class TajweedRulesEmbedder:
 
         # Pause slice: 3-bit code for stop categories
         self.n_pause: int = 3
-        self.pause_default: np.ndarray = np.zeros(self.n_pause, dtype=float)
         self.pause_categories: Dict[int, str] = {
             0: "do_not_stop",
-            1: "seli",
-            2: "jaiz",
-            3: "taanoq",
-            4: "qeli_or_ayah_end",
-            5: "sakta",
-            6: "lazem",
+            1: "word_boundary_emergency",
+            2: "seli",
+            3: "jaiz",
+            4: "taanoq",
+            5: "qeli_or_ayah_end",
+            6: "sakta",
+            7: "lazem",
         }
         self.pause_category_symbol: Dict[int, str] = {
             0: "-",
-            1: "↦",
-            2: "≈",
-            3: "⋀",
-            4: "⏹",
-            5: "˽",
-            6: "⛔",
+            1: "!",
+            2: "↦",
+            3: "≈",
+            4: "⋀",
+            5: "⏹",
+            6: "˽",
+            7: "⛔",
         }
         self.pause_char_category: Dict[str, int] = {
-            "ۖ": 1,  # Seli (continue preferred)
-            "ۗ": 4,  # Qeli (stop preferred)
-            "ۚ": 2,  # Jaiz (optional)
-            "ۛ": 3,  # Taanoq (paired dots)
-            "ۘ": 6,  # Lazem (mandatory)
-            "ۜ": 5,  # Sakta (brief mandatory pause)
+            "ۖ": 2,  # Seli (continue preferred)
+            "ۗ": 5,  # Qeli (stop preferred)
+            "ۚ": 3,  # Jaiz (optional)
+            "ۛ": 4,  # Taanoq (paired dots)
+            "ۘ": 7,  # Lazem (mandatory)
+            "ۜ": 6,  # Sakta (brief mandatory pause)
             "ۙ": 0,  # Mamnoo (do not stop)
         }
+        # Default pause (inside a word): do not stop.
+        self.pause_default: np.ndarray = self.encode_pause_bits(0)
+        # Word boundary / emergency stop when no explicit pause mark is present.
+        self.word_boundary_pause: np.ndarray = self.encode_pause_bits(1)
 
     # ------------------------------------------------------------------
     def encode_pause_bits(self, category: int) -> np.ndarray:

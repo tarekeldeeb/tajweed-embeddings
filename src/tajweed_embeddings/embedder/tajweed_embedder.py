@@ -435,6 +435,8 @@ class TajweedEmbedder:
             last_base: Optional[str] = None
             last_has_shadda: bool = False
             filtered_idx = 0
+            explicit_pause_indices: set[int] = set()
+            marker_letter_indices: set[int] = set()
 
             for idx_char, ch in enumerate(chars):
                 madd_on_letter = False
@@ -476,12 +478,17 @@ class TajweedEmbedder:
                                 self.idx_pause_start : self.idx_pause_start
                                 + self.n_pause
                             ] = pause_vec
+                            # Track that this letter received an explicit pause glyph.
+                            if filtered_idx > 0:
+                                explicit_pause_indices.add(filtered_idx - 1)
                     continue
 
                 vec = np.zeros(self.embedding_dim, dtype=float)
 
                 letter_idx = self.letter_to_index[ch]
                 vec[letter_idx] = 1.0
+                if ch in self.marker_rule_map:
+                    marker_letter_indices.add(filtered_idx)
                 last_base = None
                 haraka_set = False
 
@@ -521,16 +528,27 @@ class TajweedEmbedder:
                 last_vec = vec
                 filtered_idx += 1
 
+            pause_slice = slice(
+                self.idx_pause_start, self.idx_pause_start + self.n_pause
+            )
+            word_boundary_pause = self.tajweed_rules.word_boundary_pause
             for idx, vec in enumerate(embeddings):
-                if idx not in word_last_indices:
-                    vec[
-                        self.idx_pause_start : self.idx_pause_start + self.n_pause
-                    ] = self.pause_default
+                if idx in explicit_pause_indices:
+                    continue
+                if idx in marker_letter_indices:
+                    vec[pause_slice] = self.pause_default
+                    continue
+                if idx in word_last_indices:
+                    # Only promote to word-boundary pause when nothing explicit was set.
+                    if np.array_equal(vec[pause_slice], self.pause_default):
+                        vec[pause_slice] = word_boundary_pause
+                else:
+                    vec[pause_slice] = self.pause_default
 
             if add_end_pause and embeddings:
                 embeddings[-1][
                     self.idx_pause_start : self.idx_pause_start + self.n_pause
-                ] = self._encode_pause_bits(4)
+                ] = self._encode_pause_bits(5)
 
             # Ensure explicit maddah sequences retain madd haraka even if diacritic was stripped.
             if not embeddings and text:

@@ -10,7 +10,7 @@ def test_end_of_ayah_has_pause(emb):
     """Last letter of an āyah should carry a mandatory pause."""
     vecs = emb.text_to_embedding(1, 1)
     last = vecs[-1]
-    assert _pause_category(last, emb) == 4
+    assert _pause_category(last, emb) == 5
 
 
 def test_non_final_word_letters_have_no_pause(emb):
@@ -20,15 +20,23 @@ def test_non_final_word_letters_have_no_pause(emb):
         assert _pause_category(vec, emb) == 0
 
 
+def test_word_boundary_defaults_to_emergency_pause(emb):
+    """Word-ending letters without explicit marks carry the word-boundary pause."""
+    vecs = emb.text_to_embedding(1, 1, "بِسْمِ اللَّهِ")
+    categories = [_pause_category(v, emb) for v in vecs]
+    # First word "بِسْمِ" ends before the space; ensure we see category 1 somewhere.
+    assert 1 in categories
+
+
 @pytest.mark.parametrize(
     "mark,expected",
     [
-        ("ۖ", 1),  # Seli
-        ("ۚ", 2),  # Jaiz
-        ("ۛ", 3),  # Taanoq
-        ("ۗ", 4),  # Qeli
-        ("ۜ", 5),  # Sakta
-        ("ۘ", 6),  # Lazem
+        ("ۖ", 2),  # Seli
+        ("ۚ", 3),  # Jaiz
+        ("ۛ", 4),  # Taanoq
+        ("ۗ", 5),  # Qeli
+        ("ۜ", 6),  # Sakta
+        ("ۘ", 7),  # Lazem
         ("ۙ", 0),  # Do not stop
     ],
 )
@@ -42,5 +50,5 @@ def test_full_surah_end_of_ayah_pauses(emb):
     """Full-sūrah embeddings should carry end-of-ayah pauses on each boundary."""
     vecs = emb.text_to_embedding(1)
     categories = [_pause_category(v, emb) for v in vecs]
-    assert categories.count(4) == len(emb.quran["1"])
+    assert categories.count(5) == len(emb.quran["1"])
 """Pause category encoding tests."""

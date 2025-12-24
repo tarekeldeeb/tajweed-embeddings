@@ -7,8 +7,7 @@ from pathlib import Path
 def test_rule_counts_are_stable():
     """Ensure tajweed.rules.json retains expected rule occurrence totals."""
     data_path = Path("src/tajweed_embeddings/data/tajweed.rules.json")
-    data = json.loads(data_path.read_text())
-
+    data = json.loads(data_path.read_text(encoding="utf-8"))
     counts = {}
     for entry in data:
         for ann in entry.get("annotations", []):

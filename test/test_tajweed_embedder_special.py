@@ -85,7 +85,7 @@ def test_pause_bits_apply_to_previous_letter(emb):
     vec = out[0]
     pause_slice = vec[emb.idx_pause_start:emb.idx_pause_start + emb.n_pause]
     category = int(pause_slice[0] + (pause_slice[1] * 2) + (pause_slice[2] * 4))
-    assert category == 6  # lazim code
+    assert category == 7  # lazim code
     assert pause_slice[2] == 1  # mandatory
 
 
