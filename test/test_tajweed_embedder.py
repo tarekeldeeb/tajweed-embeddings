@@ -196,6 +196,34 @@ def test_full_surah_has_rule_flags(emb):
     assert any(vec[emb.idx_rule_start:].sum() > 0 for vec in out)
 
 
+def test_ikhfa_span_across_pause(emb):
+    """Ikhfa on tanween should persist across pause marks/spaces (10:68 “وَلَدًا ۗ”)."""
+    embeddings = emb.text_to_embedding(10, 68)
+    ikhfa_idx = emb.rule_to_index.get("ikhfa")
+    assert ikhfa_idx is not None
+
+    def letter_and_ikhfa(vec):
+        letter_slice = vec[: emb.n_letters]
+        letter = emb.index_to_letter[int(np.argmax(letter_slice))]
+        has_ikhfa = vec[emb.idx_rule_start + ikhfa_idx] > 0
+        return letter, has_ikhfa
+
+    tagged = [letter_and_ikhfa(v) for v in embeddings]
+
+    # Find the tanween on د in “وَلَدًا” and ensure ikhfa is active there
+    target_idx = None
+    for i, (ltr, has) in enumerate(tagged):
+        if ltr == "د" and has:
+            target_idx = i
+            break
+    assert target_idx is not None, "Ikhfa not tagged on tanween of د in 10:68"
+
+    # Span should continue to at least one of the following letters (across pause/space)
+    assert any(
+        j < len(tagged) and tagged[j][1] for j in (target_idx + 1, target_idx + 2)
+    ), "Ikhfa span did not cross the pause mark after tanween in 10:68"
+
+
 def test_maddah_above_attaches_to_alif(emb):
     """Decomposed alif+maddah should produce one letter with madd haraka."""
     out = emb.text_to_embedding(1, 7, "آ")
