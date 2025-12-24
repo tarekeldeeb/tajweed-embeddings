@@ -52,12 +52,7 @@ RULE2E = {
     'madd_muttasil'         : 't',
     'qalqalah'              : 'q',
     'silent'                : 'e',
-    'ghunnah_tafkheem'       : 'p'
-<<<<<<< HEAD
-=======
-    'silent'                : 'e',
-    'ghunnah_tafkheem'       : 'p'
->>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
+    'ghunnah_tafkheem'      : 'p'
 }
 
 class embedding:
@@ -188,8 +183,6 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "is_high_noon": c == "ۨ",
                 "is_tanween": any(s == c for s in "ًٌٍ"),
                 "is_final": end_i >= len(txt) or txt[end_i] == " ",
-<<<<<<< HEAD
-=======
             })
     elif rule == "ghunnah_tafkheem":
         # Same structure as "ikhfa", but adds a feature for the subset
@@ -210,8 +203,6 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "is_tanween": any(s == c for s in "ًٌٍ"),
                 "is_final": end_i >= len(txt) or txt[end_i] == " ",
             })        
->>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
-            })        
     elif rule == "ikhfa_shafawi":
         if not include_this:
             res.update({
@@ -229,10 +220,6 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "is_tanween": c in "ًٌٍ",
                 "is_base": (unicodedata.category(c) != "Mn" and c != "ـ") or c == "ٰ",
             })      
-<<<<<<< HEAD
-=======
-            })      
->>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
     elif rule == "lam_shamsiyyah":
         if not include_this:
             res.update({
