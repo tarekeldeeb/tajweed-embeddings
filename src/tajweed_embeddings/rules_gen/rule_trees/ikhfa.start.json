@@ -32,31 +32,59 @@
     "value": 0.5
   },
   "lt": {
-    "attribute": "0_is_tanween",
-    "gt": {
-      "attribute": "2_base_is_ikhfa_set",
+      "attribute": "0_is_tanween",
       "gt": {
-        "label": 1
-      },
-      "lt": {
-        "attribute": "3_base_is_ikhfa_set",
+        "attribute": "2_base_is_ikhfa_set",
         "gt": {
-          "attribute": "0_is_final",
+          "label": 1
+        },
+        "lt": {
+          "attribute": "3_base_is_ikhfa_set",
           "gt": {
-            "label": 0
+            "attribute": "0_is_final",
+            "gt": {
+              "label": 0
+            },
+            "lt": {
+              "label": 1
+            },
+            "value": 0.5
           },
           "lt": {
-            "label": 1
+            "attribute": "4_base_is_ikhfa_set",
+            "gt": {
+              "attribute": "0_is_final",
+              "gt": {
+                "label": 0
+              },
+              "lt": {
+                "label": 1
+              },
+              "value": 0.5
+            },
+            "lt": {
+              "attribute": "5_base_is_ikhfa_set",
+              "gt": {
+                "attribute": "0_is_final",
+                "gt": {
+                  "label": 0
+                },
+                "lt": {
+                  "label": 1
+                },
+                "value": 0.5
+              },
+              "lt": {
+                "label": 0
+              },
+              "value": 0.5
+            },
+            "value": 0.5
           },
           "value": 0.5
         },
-        "lt": {
-          "label": 0
-        },
         "value": 0.5
       },
-      "value": 0.5
-    },
     "lt": {
       "attribute": "0_is_high_noon",
       "gt": {

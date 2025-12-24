@@ -53,6 +53,11 @@ RULE2E = {
     'qalqalah'              : 'q',
     'silent'                : 'e',
     'ghunnah_tafkheem'       : 'p'
+<<<<<<< HEAD
+=======
+    'silent'                : 'e',
+    'ghunnah_tafkheem'       : 'p'
+>>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
 }
 
 class embedding:
@@ -183,6 +188,29 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "is_high_noon": c == "ۨ",
                 "is_tanween": any(s == c for s in "ًٌٍ"),
                 "is_final": end_i >= len(txt) or txt[end_i] == " ",
+<<<<<<< HEAD
+=======
+            })
+    elif rule == "ghunnah_tafkheem":
+        # Same structure as "ikhfa", but adds a feature for the subset
+        # of ikhfa letters that are always heavy (tafkhim) and actually belong to ikhfa:
+        # {ص, ض, ط, ق, ظ}
+        if not include_this:
+            res.update({
+                "has_implicit_sukoon": not any(s in c_ext for s in "ًٌٍَُِْ"),
+                # keep ikhfa-set feature (optional but useful if you want to reuse ikhfa logic)
+                "base_is_ikhfa_set": c_base in "تثجدذزسشصضطظفقك",
+                # NEW: the correct intersection subset for your rule
+                "base_is_ikhfa_tafkheem_set": c_base in "صضطقظق",
+            })
+        if include_this:
+            res.update({
+                "is_noon": c == "ن",
+                "is_high_noon": c == "ۨ",
+                "is_tanween": any(s == c for s in "ًٌٍ"),
+                "is_final": end_i >= len(txt) or txt[end_i] == " ",
+            })        
+>>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
             })        
     elif rule == "ikhfa_shafawi":
         if not include_this:
@@ -201,6 +229,10 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
                 "is_tanween": c in "ًٌٍ",
                 "is_base": (unicodedata.category(c) != "Mn" and c != "ـ") or c == "ٰ",
             })      
+<<<<<<< HEAD
+=======
+            })      
+>>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
     elif rule == "lam_shamsiyyah":
         if not include_this:
             res.update({
@@ -346,8 +378,15 @@ def exemplars_for(rule, txt, auxiliary_stream=None):
         "idghaam_mutaqaribayn": (1, 2),
         "idghaam_no_ghunnah": (0, 3),
         "idghaam_shafawi": (0, 2),
+<<<<<<< HEAD
         "ikhfa": (0, 3),
         "ghunnah_tafkheem": (0, 3),
+=======
+        # Extend lookahead for ikhfa variants to skip pause glyphs/spaces between
+        # tanween/noon and the actual ikhfa letter (e.g., \"ۗ \" before the next word).
+        "ikhfa": (0, 5),
+        "ghunnah_tafkheem": (0, 5),
+>>>>>>> d33b7b9 (Fix Ikhfaa, add Ghunnah Tafkheem rule)
         "ikhfa_shafawi": (0, 2),
         "iqlab": (0, 2),
         "lam_shamsiyyah": (1, 1),
