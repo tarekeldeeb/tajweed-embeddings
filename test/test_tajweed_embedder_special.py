@@ -65,17 +65,18 @@ def test_small_glyph_mapping(emb):
         assert emb.index_to_letter[letter_idx] == target
 
 
-def test_iqlab_marker_is_distinct(emb):
-    """Iqlab marker (ۢ) should embed distinctly and not alias to Lazem (ۘ)."""
-    iqlab_vec = emb.text_to_embedding(1, 1, "ۢ")[0]
+def test_iqlab_marker_applies_to_previous_letter(emb):
+    """Iqlab marker (ۢ) should set a rule on the previous letter."""
+    iqlab_vec = emb.text_to_embedding(1, 1, "بۢ")[0]
     lazem_vec = emb.text_to_embedding(1, 1, "بۘ")[0]
 
     iqlab_letter = emb.index_to_letter[np.argmax(iqlab_vec[:emb.n_letters])]
     lazem_letter = emb.index_to_letter[np.argmax(lazem_vec[:emb.n_letters])]
+    iqlab_idx = emb.rule_to_index["iqlab"]
 
-    assert iqlab_letter == "ۢ"
+    assert iqlab_letter == "ب"
     assert lazem_letter == "ب"  # lazim pause applies to previous letter
-    assert iqlab_letter != lazem_letter
+    assert iqlab_vec[emb.idx_rule_start + iqlab_idx] == 1.0
 
 
 def test_pause_bits_apply_to_previous_letter(emb):
@@ -89,8 +90,8 @@ def test_pause_bits_apply_to_previous_letter(emb):
     assert pause_slice[2] == 1  # mandatory
 
 
-def test_rule_markers_embed_without_pause_bits(emb):
-    """Tajweed rule markers (non-pauses) should embed as their own letters and not set pause bits."""
+def test_rule_markers_attach_to_previous_letter(emb):
+    """Tajweed rule markers (non-pauses) should not create extra vectors."""
     markers = [
         ("ۢ", "rule-iqlab"),
         ("۬", "rule-tas-heel"),
@@ -99,13 +100,11 @@ def test_rule_markers_embed_without_pause_bits(emb):
         ("ۣ", "rule-optional-seen"),
     ]
     for ch, _label in markers:
-        out = emb.text_to_embedding(1, 1, ch)
+        out = emb.text_to_embedding(1, 1, f"ب{ch}")
         assert len(out) == 1
         vec = out[0]
-        pause_slice = vec[emb.idx_pause_start:emb.idx_pause_start + emb.n_pause]
-        assert pause_slice.sum() == 0
         letter_idx = np.argmax(vec[:emb.n_letters])
-        assert emb.index_to_letter[letter_idx] == ch
+        assert emb.index_to_letter[letter_idx] == "ب"
 
 
 def test_rule_markers_set_rule_flags(emb):
@@ -118,7 +117,7 @@ def test_rule_markers_set_rule_flags(emb):
         "ۣ": "optional_seen",
     }
     for ch, rule in markers.items():
-        out = emb.text_to_embedding(1, 1, ch)
+        out = emb.text_to_embedding(1, 1, f"ب{ch}")
         vec = out[0]
         ri = emb.rule_to_index[rule]
         assert vec[emb.idx_rule_start + ri] == 1.0

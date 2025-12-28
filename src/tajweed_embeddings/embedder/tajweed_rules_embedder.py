@@ -17,11 +17,13 @@ class TajweedRulesEmbedder:
         char_aliases: Dict[str, str],
         letters: List[str],
         diacritic_chars: set[str],
+        marker_chars: set[str],
         pause_chars: set[str],
     ):
         self.char_aliases = char_aliases
         self.letters = set(letters)
         self.diacritic_chars = diacritic_chars
+        self.marker_chars = marker_chars
         self.pause_chars = pause_chars
 
         rule_names_set = set()
@@ -120,7 +122,9 @@ class TajweedRulesEmbedder:
                 norm_to_filtered[i] = filtered_len
                 filtered_len += 1
             elif i > 0 and (
-                norm_ch in self.diacritic_chars or norm_ch in self.pause_chars
+                norm_ch in self.diacritic_chars
+                or norm_ch in self.marker_chars
+                or norm_ch in self.pause_chars
             ):
                 norm_to_filtered[i] = norm_to_filtered[i - 1]
 

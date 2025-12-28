@@ -58,6 +58,7 @@ class TajweedEmbedder:
             "۫": "ishmam",
             "ۣ": "optional_seen",
         }
+        self.marker_chars: set[str] = set(self.marker_rule_map.keys())
         # Character aliases: map stylistic glyphs to canonical letters
         self.char_aliases: Dict[str, str] = {
             "ۨ": "ن",  # small high noon
@@ -67,8 +68,9 @@ class TajweedEmbedder:
 
         # Component helpers
         self.haraka_helper = HarakatEmbedder()
+        diacritic_like = self.haraka_helper.diacritic_chars | self.marker_chars
         self.letters_helper = LettersEmbedder(
-            self.sifat, self.pause_chars, self.haraka_helper.diacritic_chars
+            self.sifat, self.pause_chars, diacritic_like
         )
         self.sifat_embedder = SifatEmbedder()
         self.tajweed_rules = TajweedRulesEmbedder(
@@ -77,6 +79,7 @@ class TajweedEmbedder:
             self.char_aliases,
             self.letters_helper.letters,
             self.haraka_helper.diacritic_chars,
+            self.marker_chars,
             self.pause_chars,
         )
 
@@ -320,7 +323,9 @@ class TajweedEmbedder:
                 raw_to_filtered[i] = filtered_len
                 filtered_len += 1
             elif i > 0 and (
-                norm_ch in self.diacritic_chars or norm_ch in self.pause_chars
+                norm_ch in self.diacritic_chars
+                or norm_ch in self.marker_chars
+                or norm_ch in self.pause_chars
             ):
                 # Allow diacritics/markers to attach to the preceding kept glyph
                 raw_to_filtered[i] = raw_to_filtered[i - 1]
@@ -422,7 +427,11 @@ class TajweedEmbedder:
                     current_word.append(filtered_len)
                     word_letter_raws.append(idx)
                     filtered_len += 1
-                elif norm_ch in self.diacritic_chars or norm_ch in self.pause_chars:
+                elif (
+                    norm_ch in self.diacritic_chars
+                    or norm_ch in self.marker_chars
+                    or norm_ch in self.pause_chars
+                ):
                     raw_to_filtered.append(prev_filtered)
                     if norm_ch in self.diacritic_chars:
                         if norm_ch == self.shadda_char:
@@ -472,7 +481,6 @@ class TajweedEmbedder:
             last_has_shadda: bool = False
             filtered_idx = 0
             explicit_pause_indices: set[int] = set()
-            marker_letter_indices: set[int] = set()
 
             for idx_char, ch in enumerate(chars):
                 madd_on_letter = False
@@ -480,6 +488,13 @@ class TajweedEmbedder:
                     ch = "ا"
                     madd_on_letter = True
                 ch = self.char_aliases.get(ch, ch)
+                if ch in self.marker_rule_map:
+                    if last_vec is not None:
+                        rname = self.marker_rule_map[ch]
+                        ri = self.rule_to_index.get(rname)
+                        if ri is not None:
+                            last_vec[self.idx_rule_start + ri] = 1.0
+                    continue
                 if ch not in self.letters:
                     if last_vec is not None:
                         if ch in self.diacritic_chars:
@@ -523,8 +538,6 @@ class TajweedEmbedder:
 
                 letter_idx = self.letter_to_index[ch]
                 vec[letter_idx] = 1.0
-                if ch in self.marker_rule_map:
-                    marker_letter_indices.add(filtered_idx)
                 last_base = None
                 haraka_set = False
 
@@ -570,9 +583,6 @@ class TajweedEmbedder:
             word_boundary_pause = self.tajweed_rules.word_boundary_pause
             for idx, vec in enumerate(embeddings):
                 if idx in explicit_pause_indices:
-                    continue
-                if idx in marker_letter_indices:
-                    vec[pause_slice] = self.pause_default
                     continue
                 if idx in word_last_indices:
                     # Only promote to word-boundary pause when nothing explicit was set.
