@@ -3,24 +3,38 @@
   "gt": {
     "attribute": "0_has_implicit_sukoon",
     "gt": {
-      "attribute": "1_base_is_ikhfa_set",
+      "attribute": "1_base_is_idhar_set",
       "gt": {
-        "label": 1
+        "label": 0
       },
       "lt": {
-        "attribute": "2_base_is_ikhfa_set",
+        "attribute": "1_base_is_ikhfa_set",
         "gt": {
-          "attribute": "0_is_final",
-          "gt": {
-            "label": 1
-          },
-          "lt": {
-            "label": 0
-          },
-          "value": 0.5
+          "label": 1
         },
         "lt": {
-          "label": 0
+          "attribute": "2_base_is_idhar_set",
+          "gt": {
+            "label": 0
+          },
+          "lt": {
+            "attribute": "2_base_is_ikhfa_set",
+            "gt": {
+              "attribute": "0_is_final",
+              "gt": {
+                "label": 1
+              },
+              "lt": {
+                "label": 0
+              },
+              "value": 0.5
+            },
+            "lt": {
+              "label": 0
+            },
+            "value": 0.5
+          },
+          "value": 0.5
         },
         "value": 0.5
       },
@@ -32,26 +46,24 @@
     "value": 0.5
   },
   "lt": {
-      "attribute": "0_is_tanween",
+    "attribute": "0_is_tanween",
+    "gt": {
+      "attribute": "2_base_is_idhar_set",
       "gt": {
+        "label": 0
+      },
+      "lt": {
         "attribute": "2_base_is_ikhfa_set",
         "gt": {
           "label": 1
         },
         "lt": {
-          "attribute": "3_base_is_ikhfa_set",
+          "attribute": "3_base_is_idhar_set",
           "gt": {
-            "attribute": "0_is_final",
-            "gt": {
-              "label": 0
-            },
-            "lt": {
-              "label": 1
-            },
-            "value": 0.5
+            "label": 0
           },
           "lt": {
-            "attribute": "4_base_is_ikhfa_set",
+            "attribute": "3_base_is_ikhfa_set",
             "gt": {
               "attribute": "0_is_final",
               "gt": {
@@ -63,19 +75,47 @@
               "value": 0.5
             },
             "lt": {
-              "attribute": "5_base_is_ikhfa_set",
+              "attribute": "4_base_is_idhar_set",
               "gt": {
-                "attribute": "0_is_final",
-                "gt": {
-                  "label": 0
-                },
-                "lt": {
-                  "label": 1
-                },
-                "value": 0.5
+                "label": 0
               },
               "lt": {
-                "label": 0
+                "attribute": "4_base_is_ikhfa_set",
+                "gt": {
+                  "attribute": "0_is_final",
+                  "gt": {
+                    "label": 0
+                  },
+                  "lt": {
+                    "label": 1
+                  },
+                  "value": 0.5
+                },
+                "lt": {
+                  "attribute": "5_base_is_idhar_set",
+                  "gt": {
+                    "label": 0
+                  },
+                  "lt": {
+                    "attribute": "5_base_is_ikhfa_set",
+                    "gt": {
+                      "attribute": "0_is_final",
+                      "gt": {
+                        "label": 0
+                      },
+                      "lt": {
+                        "label": 1
+                      },
+                      "value": 0.5
+                    },
+                    "lt": {
+                      "label": 0
+                    },
+                    "value": 0.5
+                  },
+                  "value": 0.5
+                },
+                "value": 0.5
               },
               "value": 0.5
             },
@@ -85,6 +125,8 @@
         },
         "value": 0.5
       },
+      "value": 0.5
+    },
     "lt": {
       "attribute": "0_is_high_noon",
       "gt": {

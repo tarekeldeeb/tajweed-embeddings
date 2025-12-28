@@ -185,6 +185,7 @@ def attributes_for(rule, txt, i, include_this=True, auxiliary_stream=None):
             res.update({
                 "has_implicit_sukoon": not any(s in c_ext for s in "ًٌٍَُِْ"),
                 "base_is_ikhfa_set": c_base in "تثجدذزسشصضطظفقك",
+                "base_is_idhar_set": c_base in "ءأؤئإٱآهعحغخ",
             })
         if include_this:
             res.update({

@@ -25,7 +25,7 @@ def test_rule_counts_are_stable():
         "idghaam_mutaqaribayn": 13,
         "idghaam_no_ghunnah": 1001,
         "idghaam_shafawi": 822,
-        "ikhfa": 5702,
+        "ikhfa": 5493,
         "ikhfa_shafawi": 483,
         "iqlab": 562,
         "lam_shamsiyyah": 2733,
@@ -39,4 +39,4 @@ def test_rule_counts_are_stable():
     }
 
     assert counts == expected
-    assert sum(counts.values()) == 100099
+    assert sum(counts.values()) == 99890
