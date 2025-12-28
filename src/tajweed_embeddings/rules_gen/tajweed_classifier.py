@@ -401,7 +401,7 @@ def exemplars_for(rule, txt, auxiliary_stream=None):
         "ikhfa_shafawi": (0, 2),
         "iqlab": (0, 2),
         "lam_shamsiyyah": (1, 1),
-        "madd_2": (0, 1),
+        "madd_2": (0, 2),
         "madd_246": (1, 2),
         "madd_6": (1, 1),
         "madd_munfasil": (1, 2),

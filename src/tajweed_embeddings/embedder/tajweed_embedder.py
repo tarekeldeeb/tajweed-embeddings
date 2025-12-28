@@ -15,6 +15,7 @@ from tajweed_embeddings.util.normalization import normalize_superscript_alef
 from .harakat_embedder import HarakatEmbedder
 from .letters_embedder import LettersEmbedder
 from .sifat_embedder import SifatEmbedder
+from .sifat_editor import SifatEditor
 from .tajweed_rules_embedder import TajweedRulesEmbedder
 
 
@@ -73,6 +74,13 @@ class TajweedEmbedder:
             self.sifat, self.pause_chars, diacritic_like
         )
         self.sifat_embedder = SifatEmbedder()
+        self.isti_la_letters = {
+            ch
+            for ch, entry in self.sifat.items()
+            if isinstance(entry, dict)
+            and entry.get("sifat", {}).get("isti'la", 0)
+        }
+        self.sifat_editor = SifatEditor(self.haraka_helper, self.isti_la_letters)
         self.tajweed_rules = TajweedRulesEmbedder(
             self.rules,
             self.marker_rule_map,
@@ -481,6 +489,7 @@ class TajweedEmbedder:
             last_has_shadda: bool = False
             filtered_idx = 0
             explicit_pause_indices: set[int] = set()
+            filtered_letters: List[str] = []
 
             for idx_char, ch in enumerate(chars):
                 madd_on_letter = False
@@ -575,7 +584,18 @@ class TajweedEmbedder:
 
                 embeddings.append(vec)
                 last_vec = vec
+                filtered_letters.append(ch)
                 filtered_idx += 1
+
+            self.sifat_editor.apply(
+                embeddings,
+                filtered_letters,
+                self.idx_haraka_start,
+                self.n_harakat,
+                self.idx_sifat_start,
+                word_last_indices,
+                explicit_pause_indices,
+            )
 
             pause_slice = slice(
                 self.idx_pause_start, self.idx_pause_start + self.n_pause
