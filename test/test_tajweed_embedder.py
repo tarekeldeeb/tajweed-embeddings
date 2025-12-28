@@ -111,6 +111,35 @@ def test_embedding_to_text_zero_vector(emb):
     assert len(txt) > 0
 
 
+def test_embedding_to_text_includes_word_spaces(emb):
+    """Word-boundary pause should reinsert spaces."""
+    sample = "بِسْمِ ٱللَّهِ"
+    vecs = emb.text_to_embedding(1, 1, sample)
+    reconstructed = emb.embedding_to_text(vecs)
+    assert " " in reconstructed
+
+
+def test_embedding_to_text_long_ayah_round_trip(emb):
+    """Long ayah round-trip preserves base letters order."""
+    text = emb.quran["2"]["282"]
+    vecs = emb.text_to_embedding(2, 282)
+    reconstructed = emb.embedding_to_text(vecs)
+
+    def _letters_only(src: str) -> list[str]:
+        normalized = emb._normalize_text(src)  # type: ignore[attr-defined]
+        normalized = normalized.replace("آ", "آ")
+        letters = []
+        for ch in normalized:
+            norm_ch = emb.char_aliases.get(ch, ch)
+            if norm_ch == "آ":
+                norm_ch = "ا"
+            if norm_ch in emb.letters:
+                letters.append(norm_ch)
+        return letters
+
+    assert _letters_only(text) == _letters_only(reconstructed)
+
+
 # -------------------------------------------------------------------
 # SIMILARITY + SCORING TESTS
 # -------------------------------------------------------------------

@@ -3,11 +3,19 @@
 from collections import deque, namedtuple
 import json
 import multiprocessing
-import tqdm
+try:
+    import tqdm
+except ImportError:  # pragma: no cover - fallback for minimal environments
+    class _TqdmFallback:
+        @staticmethod
+        def tqdm(iterable, total=None):
+            return iterable
+    tqdm = _TqdmFallback()
 import os
 import sys
 import unicodedata
 import argparse
+import importlib.util
 import tempfile
 from pathlib import Path
 
@@ -28,8 +36,28 @@ try:
 except ImportError:  # pragma: no cover - fallback for direct script invocation
     from tree import Exemplar, json2tree
 
-from tajweed_embeddings.util.normalization import normalize_superscript_alef
-from tajweed_embeddings.util.quran_download import DEFAULT_TANZIL_URLS, download_quran_txt
+try:
+    from tajweed_embeddings.util.normalization import normalize_superscript_alef
+    from tajweed_embeddings.util.quran_download import (
+        DEFAULT_TANZIL_URLS,
+        download_quran_txt,
+    )
+except Exception:  # pragma: no cover - avoid heavy imports in minimal envs
+    def _load_util_module(module_name: str):
+        module_path = SRC_ROOT / "tajweed_embeddings" / "util" / f"{module_name}.py"
+        spec = importlib.util.spec_from_file_location(
+            f"tajweed_embeddings.util.{module_name}", module_path
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        return module
+
+    _norm = _load_util_module("normalization")
+    normalize_superscript_alef = _norm.normalize_superscript_alef
+    _qd = _load_util_module("quran_download")
+    DEFAULT_TANZIL_URLS = _qd.DEFAULT_TANZIL_URLS
+    download_quran_txt = _qd.download_quran_txt
 
 RangeAttributes = namedtuple("Attributes", "start end attributes")
 
@@ -502,6 +530,53 @@ def label_ayah(params):
                     "start": annotations_run[k].popleft() + offset,
                     "end": i + 1 + offset
                 })
+
+    # Remove madd rules from the first letter of muqatta'at-style words
+    # (words containing only maddah diacritics and no other harakat).
+    muqattaat_starts: set[int] = set()
+    has_maddah = False
+    has_other_diacritic = False
+    first_base = None
+    for idx, ch in enumerate(text):
+        if ch == " ":
+            if has_maddah and not has_other_diacritic and first_base is not None:
+                muqattaat_starts.add(first_base + offset)
+            has_maddah = False
+            has_other_diacritic = False
+            first_base = None
+            continue
+        if unicodedata.category(ch) == "Mn":
+            if ch == "ٓ":
+                has_maddah = True
+            else:
+                has_other_diacritic = True
+        elif ch == "ٰ":
+            has_other_diacritic = True
+        if (unicodedata.category(ch) != "Mn" and ch != "ـ") or ch == "ٰ":
+            if first_base is None:
+                first_base = idx
+    if has_maddah and not has_other_diacritic and first_base is not None:
+        muqattaat_starts.add(first_base + offset)
+    if muqattaat_starts:
+        madd_rules = {
+            "madd_2",
+            "madd_246",
+            "madd_6",
+            "madd_munfasil",
+            "madd_muttasil",
+        }
+        cleaned = []
+        for ann in annotations:
+            rule = ann.get("rule")
+            if rule not in madd_rules:
+                cleaned.append(ann)
+                continue
+            start = int(ann.get("start", 0))
+            end = int(ann.get("end", 0))
+            if any(start <= pos < end for pos in muqattaat_starts):
+                continue
+            cleaned.append(ann)
+        annotations = cleaned
 
     # Enforce madd priority: strongest kept, weaker removed when spans overlap exactly.
     madd_priority = {

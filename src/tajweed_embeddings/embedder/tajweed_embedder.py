@@ -66,8 +66,10 @@ class TajweedEmbedder:
         }
 
         # Component helpers
-        self.letters_helper = LettersEmbedder(self.sifat, self.pause_chars)
         self.haraka_helper = HarakatEmbedder()
+        self.letters_helper = LettersEmbedder(
+            self.sifat, self.pause_chars, self.haraka_helper.diacritic_chars
+        )
         self.sifat_embedder = SifatEmbedder()
         self.tajweed_rules = TajweedRulesEmbedder(
             self.rules,
@@ -404,21 +406,55 @@ class TajweedEmbedder:
             filtered_len = 0
             word_last_indices: set[int] = set()
             current_word: List[int] = []
-            for ch in chars:
+            raw_to_filtered: List[int] = []
+            words_info: List[Tuple[List[int], bool, bool]] = []
+            word_letter_raws: List[int] = []
+            word_has_madd = False
+            word_has_non_madd_diacritic = False
+            prev_filtered = -1
+            for idx, ch in enumerate(chars):
                 norm_ch = self.char_aliases.get(ch, ch)
                 if norm_ch == "آ":
                     norm_ch = "ا"
                 if norm_ch in self.letters:
+                    raw_to_filtered.append(filtered_len)
+                    prev_filtered = filtered_len
                     current_word.append(filtered_len)
+                    word_letter_raws.append(idx)
                     filtered_len += 1
                 elif norm_ch in self.diacritic_chars or norm_ch in self.pause_chars:
+                    raw_to_filtered.append(prev_filtered)
+                    if norm_ch in self.diacritic_chars:
+                        if norm_ch == self.shadda_char:
+                            word_has_non_madd_diacritic = True
+                        else:
+                            base = self.haraka_base_map.get(norm_ch)
+                            if base == "madd":
+                                word_has_madd = True
+                            elif base is not None:
+                                word_has_non_madd_diacritic = True
                     continue
                 else:
+                    raw_to_filtered.append(-1)
                     if current_word:
                         word_last_indices.add(current_word[-1])
+                        words_info.append(
+                            (
+                                word_letter_raws,
+                                word_has_madd,
+                                word_has_non_madd_diacritic,
+                            )
+                        )
                         current_word = []
+                        word_letter_raws = []
+                        word_has_madd = False
+                        word_has_non_madd_diacritic = False
+                    prev_filtered = -1
             if current_word:
                 word_last_indices.add(current_word[-1])
+                words_info.append(
+                    (word_letter_raws, word_has_madd, word_has_non_madd_diacritic)
+                )
 
             # Rule flags
             if apply_rules and ayah_val is not None:
@@ -616,7 +652,7 @@ class TajweedEmbedder:
         Reconstruct text from embeddings using:
           - letter one-hot
           - haraka one-hot
-        Ignores ṣifāt and rule flags.
+        Ignores ṣifāt and rule flags. Uses pause bits for word boundaries.
         """
         chars: List[str] = []
 
@@ -644,7 +680,17 @@ class TajweedEmbedder:
                 if state:
                     chars.extend(self.haraka_state_to_chars.get(state, []))
 
-        return "".join(chars)
+            # Pause: insert space for word boundary or ayah end.
+            pause_slice = vec[
+                self.idx_pause_start : self.idx_pause_start + self.n_pause
+            ]
+            if pause_slice.size == self.n_pause:
+                bits = [int(b) for b in pause_slice[: self.n_pause]]
+                pause_category = (bits[0]) | (bits[1] << 1) | (bits[2] << 2)
+                if pause_category in (1, 5):
+                    chars.append(" ")
+
+        return "".join(chars).rstrip()
 
     def encoding_to_string(self, encoding, style: str = "short") -> str:
         """
