@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tajweed-embeddings"
-version = "1.0.0"
-description = "Quran Tajweed Embedding Generator"
+version = "1.0.4"
+description = "Quran Tajweed Embeddings Generator"
 authors = [{ name="Tarek Eldeeb" }]
 requires-python = ">=3.10"
 dependencies = [
@@ -16,7 +16,13 @@ dependencies = [
 test = ["pytest>=7.4"]
 
 [project.scripts]
-tajweed_embedder = "tajweed_embeddings.embedder.cli:main"
+tajweed-embeddings = "tajweed_embeddings.embedder.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+tajweed_embeddings = [
+    "data/sifat.json",
+    "rules_gen/rule_trees/*.json",
+]

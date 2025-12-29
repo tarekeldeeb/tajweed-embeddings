@@ -9,19 +9,19 @@ Tajwīd-aware embedding engine for Qur'ān (Uthmānī script). Encodes letters, 
 
 ## What You Get
 
-- Tajwīd embeddings for the full corpus (114 sūrahs / 6236 āyāt), one vector per letter/marker.
-- JSON-backed rule spans (`tajweed.rules.json`) plus inline markers (iqlab, tas-heel, imala, ishmam, optional seen).
+- Tajwīd embeddings for the full corpus (114 sūrahs / 6236 āyāt), one vector per phoneme/letter. Quran string is recoverable from the embeddings.
+- JSON-backed rule spans (`tajweed.rules.json`) plus inline markers (iqlab, tas-heel, imala, ishmam, optional seen). Rules source: https://github.com/cpfair/quran-tajweed
 - Compact 6-bit ṣifāt encoding and explicit haraka states (tanwīn, shadda combos, madd, alternate sukūn).
 - Pretty-printing and reconstruction via `encoding_to_string(style="short"|"long")` and `embedding_to_text`.
 - Similarity helpers (`compare`, `score`) for alignment/scoring workflows.
 - Auto-bootstrap for missing data files (downloads Tanzil text and regenerates spans when absent).
-- CLI (`tajweed_embedder`) and pytest coverage.
+- CLI (`tajweed-embeddings`) and pytest coverage.
 
-## Embedding Layout (dim 91)
+## Embedding Layout (dim 90)
 
 ```
 [ letters | haraka | pause | sifat | rules ]
-    47       12        3       6       23
+    46       12        3       6       23
 ```
 
 - **Letters:** Uthmānī glyph set; pause glyphs live in the pause slice, not the letter one-hot.
@@ -43,9 +43,11 @@ Tajwīd-aware embedding engine for Qur'ān (Uthmānī script). Encodes letters, 
 Runtime dependency is `numpy`; `requests`/`tqdm` are optional for regenerating data.
 
 ```bash
-python3 -m pip install .
+pip install tajweed-embeddings
 # or for development/testing
 python3 -m pip install -e .[test]
+# or install from GitHub
+python3 -m pip install "git+https://github.com/tarekeldeeb/tajweed-embeddings.git"
 ```
 
 ## Quickstart (Python)
@@ -75,8 +77,8 @@ Notes:
 Inspect embeddings without writing code:
 
 ```bash
-tajweed_embedder --sura 1 --aya 1 --style short
-tajweed_embedder --sura 2 --aya 1 --count 3 --style long
+tajweed-embeddings --sura 1 --aya 1 --style short
+tajweed-embeddings --sura 2 --aya 1 --count 3 --style long
 ```
 
 Outputs a human-readable view of the vectors (for inspection; not the raw numeric arrays).
@@ -84,10 +86,10 @@ Outputs a human-readable view of the vectors (for inspection; not the raw numeri
 Example output (full, collapsible):
 
 <details>
-<summary>tajweed_embedder --sura 2 --aya 1 --count 3</summary>
+<summary>tajweed-embeddings --sura 2 --aya 1 --count 3</summary>
 
 ```text
-% tajweed_embedder --sura 2 --aya 1 --count 3
+% tajweed-embeddings --sura 2 --aya 1 --count 3
 ╔══════════════════════════════════════════════════════════╗
 ║ TajweedEmbedder CLI                                      ║
 ║   For inspection only — use programmatically for models. ║
@@ -209,7 +211,7 @@ Example output (full, collapsible):
 
 ## Data + Regeneration
 
-Packaged data lives in `src/tajweed_embeddings/data/` (`quran.json`, `sifat.json`, `tajweed.rules.json`). If any file is missing or empty, `TajweedEmbedder` will download the Tanzil Uthmani text and regenerate spans via `rules_gen/tajweed_classifier.py` (requires `requests` and `tqdm`). Corpus coverage: 114 sūrahs / 6236 āyāt.
+Packaged data includes `sifat.json` and the rule trees under `rules_gen/rule_trees/`. If `quran.json` or `tajweed.rules.json` are missing or empty, `TajweedEmbedder` will download the Tanzil Uthmani text and regenerate spans via `rules_gen/tajweed_classifier.py` (requires `requests` and `tqdm`); this needs internet on first run only. Corpus coverage: 114 sūrahs / 6236 āyāt.
 
 ## Tests
 

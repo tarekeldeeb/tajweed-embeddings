@@ -3,6 +3,7 @@
 
 import json
 import subprocess
+import sys
 import unicodedata
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -159,10 +160,10 @@ class TajweedEmbedder:
         # Resolve repo root and key paths.
         data_dir = self._data_dir()
         data_dir.mkdir(parents=True, exist_ok=True)
-        repo_root = data_dir.parent.parent  # .../src
-        repo_root = repo_root.parent  # project root
-        rules_gen_dir = data_dir.parent / "rules_gen"
-        quran_txt = rules_gen_dir / "output" / "quran-uthmani.txt"
+        package_root = data_dir.parent  # .../tajweed_embeddings
+        rules_gen_dir = package_root / "rules_gen"
+        rules_gen_output = rules_gen_dir / "output"
+        quran_txt = rules_gen_output / "quran-uthmani.txt"
         quran_json = data_dir / "quran.json"
         rules_json = data_dir / "tajweed.rules.json"
 
@@ -176,6 +177,7 @@ class TajweedEmbedder:
 
         if need_rules or need_quran_txt:
             if not quran_txt.exists() or quran_txt.stat().st_size == 0:
+                rules_gen_output.mkdir(parents=True, exist_ok=True)
                 download_quran_txt(quran_txt)
             if not quran_txt.exists() or quran_txt.stat().st_size == 0:
                 raise FileNotFoundError(
@@ -184,7 +186,7 @@ class TajweedEmbedder:
                 "dependencies (pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
             )
             cmd = [
-                "python3",
+                sys.executable,
                 str(rules_gen_dir / "tajweed_classifier.py"),
                 "--json",
                 "--output",
@@ -193,7 +195,7 @@ class TajweedEmbedder:
             try:
                 # Feed the existing text via stdin.
                 with quran_txt.open("rb") as fh:
-                    subprocess.run(cmd, cwd=repo_root, check=True, stdin=fh)
+                    subprocess.run(cmd, cwd=package_root, check=True, stdin=fh)
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 raise RuntimeError(
                     "Failed to generate tajweed.rules.json; ensure rules_gen dependencies "
@@ -212,8 +214,8 @@ class TajweedEmbedder:
                     f"Missing Quran text at {quran_txt}; cannot build quran.json."
                 )
             cmd = [
-                "python3",
-                str(repo_root / "src" / "tajweed_embeddings" / "util" / "tanzil_to_json.py"),
+                sys.executable,
+                str(package_root / "util" / "tanzil_to_json.py"),
                 "--input",
                 str(quran_txt),
                 "--output-dir",
@@ -221,7 +223,7 @@ class TajweedEmbedder:
                 "--output-filename",
                 "quran.json",
             ]
-            subprocess.run(cmd, cwd=repo_root, check=True)
+            subprocess.run(cmd, cwd=package_root, check=True)
 
         # Final sanity: raise if still missing/invalid so failures are explicit.
         if not self._json_type_matches(rules_json, list):

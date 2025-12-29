@@ -15,7 +15,7 @@ except ImportError:  # pragma: no cover - direct script execution fallback
 
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
-    """Parse CLI arguments for tajweed embedder."""
+    """Parse CLI arguments for tajweed embeddings."""
     parser = argparse.ArgumentParser(
         description="Render tajweed embeddings for a given sura/ayah."
     )
@@ -64,7 +64,7 @@ def main() -> None:
     if not args.quiet:
         banner = (
             "╔══════════════════════════════════════════════════════════╗\n"
-            "║ TajweedEmbedder CLI                                      ║\n"
+            "║ Tajweed Embeddings CLI                                   ║\n"
             "║   For inspection only — use programmatically for models. ║\n"
             "║   String output is a human view, NOT the numeric vectors.║\n"
             "║                                                          ║\n"
