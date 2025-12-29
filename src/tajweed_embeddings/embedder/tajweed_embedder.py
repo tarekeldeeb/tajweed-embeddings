@@ -919,7 +919,7 @@ class TajweedEmbedder:
                     ]
                     padded = [_isolate_cell(val) for val in padded]
                     sep = f" {lrm}|{lrm} "
-                    line = f"[{str(idx).rjust(idx_width)}]{lrm} " + sep.join(padded)
+                    line = f"[{str(idx).rjust(idx_width)}] {lrm}" + sep.join(padded)
                     if has_dim_rule:
                         line = _dim(line)
                     lines.append(line)
@@ -942,7 +942,7 @@ class TajweedEmbedder:
             padded = [_ljust_disp(val, col_widths[i]) for i, val in enumerate(row)]
             padded = [_isolate_cell(val) for val in padded]
             sep = f" {lrm}|{lrm} "
-            line = f"[{str(0).rjust(idx_width)}]{lrm} " + sep.join(padded)
+            line = f"[{str(0).rjust(idx_width)}] {lrm}" + sep.join(padded)
             if has_dim_rule:
                 line = _dim(line)
             return line
