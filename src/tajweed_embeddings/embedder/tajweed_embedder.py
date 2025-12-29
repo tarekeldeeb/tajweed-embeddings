@@ -821,12 +821,20 @@ class TajweedEmbedder:
                 return 0
             return sum(0 if unicodedata.combining(ch) else 1 for ch in txt)
 
+        ltr_start = "\u2066"  # LTR isolate for bidi-stable terminal output.
+        ltr_end = "\u2069"
+        lrm = "\u200e"
+
         def _ljust_disp(txt: str, width: int) -> str:
             pad = max(0, width - _disp_width(txt))
             return txt + (" " * pad)
 
         def _dim(txt: str) -> str:
             return f"\x1b[90m{txt}\x1b[0m" if txt else txt
+
+        def _isolate_cell(txt: str) -> str:
+            # Isolate each cell to prevent RTL runs from reordering columns.
+            return f"{ltr_start}{txt}{ltr_end}" if txt else ""
 
         def _render_short(enc) -> tuple[list[str], bool, bool]:
             decoded = _extract_values(enc)
@@ -909,7 +917,9 @@ class TajweedEmbedder:
                     padded = [
                         _ljust_disp(val, col_widths[i]) for i, val in enumerate(row)
                     ]
-                    line = f"[{str(idx).rjust(idx_width)}] " + " | ".join(padded)
+                    padded = [_isolate_cell(val) for val in padded]
+                    sep = f" {lrm}|{lrm} "
+                    line = f"[{str(idx).rjust(idx_width)}]{lrm} " + sep.join(padded)
                     if has_dim_rule:
                         line = _dim(line)
                     lines.append(line)
@@ -930,7 +940,9 @@ class TajweedEmbedder:
             ]
             idx_width = len(str(len(rows) - 1))
             padded = [_ljust_disp(val, col_widths[i]) for i, val in enumerate(row)]
-            line = f"[{str(0).rjust(idx_width)}] " + " | ".join(padded)
+            padded = [_isolate_cell(val) for val in padded]
+            sep = f" {lrm}|{lrm} "
+            line = f"[{str(0).rjust(idx_width)}]{lrm} " + sep.join(padded)
             if has_dim_rule:
                 line = _dim(line)
             return line
