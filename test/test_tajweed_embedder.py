@@ -253,6 +253,22 @@ def test_ikhfa_span_across_pause(emb):
     ), "Ikhfa span did not cross the pause mark after tanween in 10:68"
 
 
+@pytest.mark.parametrize("subtext", ["فِرْقٍ", "فرق"])
+def test_subtext_ikhfa_on_last_char(emb, subtext):
+    """Subtext matching should preserve ikhfa on the final letter."""
+    ikhfa_idx = emb.rule_to_index.get("ikhfa")
+    if ikhfa_idx is None:
+        pytest.skip("ikhfa rule not present")
+
+    vecs = emb.text_to_embedding(26, 63, subtext)
+    assert vecs, "Empty embeddings for subtext"
+
+    last_vec = vecs[-1]
+    letter_idx = int(np.argmax(last_vec[: emb.n_letters]))
+    assert emb.index_to_letter[letter_idx] == "ق"
+    assert last_vec[emb.idx_rule_start + ikhfa_idx] > 0
+
+
 def test_maddah_above_attaches_to_alif(emb):
     """Decomposed alif+maddah should produce one letter with madd haraka."""
     out = emb.text_to_embedding(1, 7, "آ")

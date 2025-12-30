@@ -248,6 +248,59 @@ class TajweedEmbedder:
         """Apply shared Quran text normalizations."""
         return normalize_superscript_alef(text or "")
 
+    def _normalize_for_match(self, text: str) -> str:
+        """Normalize text for substring matching (ignore tashkeel)."""
+        text = self._normalize_text(text).replace("آ", "آ")
+        text = text.replace("ٱ", "ا")
+        return "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+
+    def _raw_to_filtered_map(self, chars: List[str]) -> Tuple[List[int], int]:
+        """Map raw indices to filtered letter indices for a normalized char list."""
+        filtered_len = 0
+        raw_to_filtered: List[int] = []
+        prev_filtered = -1
+        for ch in chars:
+            norm_ch = self.char_aliases.get(ch, ch)
+            if norm_ch == "آ":
+                norm_ch = "ا"
+            if norm_ch in self.letters:
+                raw_to_filtered.append(filtered_len)
+                prev_filtered = filtered_len
+                filtered_len += 1
+            elif (
+                norm_ch in self.diacritic_chars
+                or norm_ch in self.marker_chars
+                or norm_ch in self.pause_chars
+            ):
+                raw_to_filtered.append(prev_filtered)
+            else:
+                raw_to_filtered.append(-1)
+                prev_filtered = -1
+        return raw_to_filtered, filtered_len
+
+    def _compact_for_match(
+        self, chars: List[str], strip_diacritics: bool
+    ) -> Tuple[str, List[int]]:
+        """Return compacted text and a mapping to raw indices for matching."""
+        compact: List[str] = []
+        mapping: List[int] = []
+        for idx, ch in enumerate(chars):
+            if ch.isspace() or ch == "ـ" or ch in self.pause_chars:
+                continue
+            norm_ch = self.char_aliases.get(ch, ch)
+            if strip_diacritics and (
+                unicodedata.category(ch) == "Mn"
+                or unicodedata.category(norm_ch) == "Mn"
+                or ch in self.diacritic_chars
+                or norm_ch in self.diacritic_chars
+            ):
+                continue
+            if norm_ch == "ٱ":
+                norm_ch = "ا"
+            compact.append(norm_ch)
+            mapping.append(idx)
+        return "".join(compact), mapping
+
     # ------------------------------------------------------------------
     # HARAKA HELPERS
     # ------------------------------------------------------------------
@@ -412,6 +465,7 @@ class TajweedEmbedder:
             ayah_val: Optional[int],
             apply_rules: bool,
             add_end_pause: bool,
+            rule_flags_override: Optional[List[np.ndarray]] = None,
         ) -> List[np.ndarray]:
             original_text = text
             text = self._normalize_text(text)
@@ -476,7 +530,14 @@ class TajweedEmbedder:
                 )
 
             # Rule flags
-            if apply_rules and ayah_val is not None:
+            if rule_flags_override is not None:
+                rule_flags = rule_flags_override
+                if len(rule_flags) != filtered_len:
+                    raise ValueError(
+                        "Rule flags length does not match filtered text length "
+                        f"({len(rule_flags)} != {filtered_len})."
+                    )
+            elif apply_rules and ayah_val is not None:
                 rule_flags = self.tajweed_rules.apply_rule_spans(
                     sura_val, ayah_val, chars
                 )
@@ -650,6 +711,60 @@ class TajweedEmbedder:
             )
 
         # Embed one or more consecutive ayāt starting at `ayah`.
+        if subtext is not None:
+            full_text = self.get_text(sura, ayah, None)
+            norm_full = self._normalize_text(full_text).replace("آ", "آ")
+            norm_sub = self._normalize_for_match(subtext)
+            full_chars = list(norm_full)
+            sub_chars = list(norm_sub)
+            start_raw = end_raw = -1
+            full_compact, full_map = self._compact_for_match(
+                full_chars, strip_diacritics=True
+            )
+            sub_compact, _ = self._compact_for_match(
+                sub_chars, strip_diacritics=True
+            )
+            if sub_compact:
+                start_compact = full_compact.find(sub_compact)
+                if start_compact >= 0:
+                    end_compact = start_compact + len(sub_compact)
+                    start_raw = full_map[start_compact]
+                    end_raw = full_map[end_compact - 1] + 1
+            if start_raw < 0:
+                # Fall back to embedding without rule alignment when no match is found.
+                return _embed_segment(
+                    self.get_text(sura, ayah, subtext),
+                    sura,
+                    ayah,
+                    apply_rules=False,
+                    add_end_pause=False,
+                )
+            raw_to_filtered, _ = self._raw_to_filtered_map(full_chars)
+            rule_flags_full = self.tajweed_rules.apply_rule_spans(
+                sura, ayah, full_chars
+            )
+            sub_filtered_indices: List[int] = []
+            last_idx = None
+            for raw_idx in range(start_raw, end_raw):
+                ch = full_chars[raw_idx]
+                norm_ch = self.char_aliases.get(ch, ch)
+                if norm_ch == "آ":
+                    norm_ch = "ا"
+                if norm_ch in self.letters:
+                    f_idx = raw_to_filtered[raw_idx]
+                    if f_idx >= 0 and f_idx != last_idx:
+                        sub_filtered_indices.append(f_idx)
+                        last_idx = f_idx
+            rule_flags_sub = [rule_flags_full[i] for i in sub_filtered_indices]
+            return _embed_segment(
+                self.get_text(sura, ayah, subtext),
+                sura,
+                ayah,
+                apply_rules=False,
+                add_end_pause=False,
+                rule_flags_override=rule_flags_sub,
+            )
+
         sura_key = str(sura)
         if sura_key not in self.quran:
             raise ValueError(f"Sura {sura_key} not found in quran.json")

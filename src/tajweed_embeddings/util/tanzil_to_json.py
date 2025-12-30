@@ -62,7 +62,7 @@ def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="q
             try:
                 sura, ayah, text = line.split("|", 2)
             except ValueError:
-                print("⚠️ Skipping malformed line:", line)
+                print("⚠️ ", line)
                 continue
 
             # Normalize superscript alef; keep maddah marks intact.
@@ -83,7 +83,7 @@ def convert_tanzil_to_json(input_filename, output_dir="data", output_filename="q
     print(f"  Surahs: {len(quran)}")
     for s in sorted(quran.keys(), key=int)[:5]:
         print(f"  Surah {s}: {len(quran[s])} ayat")
-    print("\nDone.\n")
+    print("  ..\nDone.\n")
 
 
 # ---------------------------------------
