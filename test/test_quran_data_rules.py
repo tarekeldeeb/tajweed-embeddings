@@ -31,7 +31,7 @@ def test_rule_counts_are_stable():
         "lam_shamsiyyah": 2733,
         "madd_2": 48287,
         "madd_246": 4543,
-        "madd_6": 144,
+        "madd_6": 149,
         "madd_munfasil": 2999,
         "madd_muttasil": 1997,
         "qalqalah": 3834,
@@ -39,4 +39,4 @@ def test_rule_counts_are_stable():
     }
 
     assert counts == expected
-    assert sum(counts.values()) == 99890
+    assert sum(counts.values()) == 99895

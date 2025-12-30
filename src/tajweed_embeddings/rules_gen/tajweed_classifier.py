@@ -562,7 +562,6 @@ def label_ayah(params):
         madd_rules = {
             "madd_2",
             "madd_246",
-            "madd_6",
             "madd_munfasil",
             "madd_muttasil",
         }

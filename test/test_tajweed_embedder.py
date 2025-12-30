@@ -225,6 +225,48 @@ def test_full_surah_has_rule_flags(emb):
     assert any(vec[emb.idx_rule_start:].sum() > 0 for vec in out)
 
 
+def test_madd_6_present_in_muqattaat(emb):
+    """All muqatta'a ayat should include madd_6 rule flags."""
+    madd_6_idx = emb.rule_to_index.get("madd_6")
+    assert madd_6_idx is not None, "madd_6 rule missing from rule index"
+    targets = [
+        (2, 1),
+        (3, 1),
+        (7, 1),
+        (10, 1),
+        (11, 1),
+        (12, 1),
+        (13, 1),
+        (14, 1),
+        (15, 1),
+        (19, 1),
+        (26, 1),
+        (27, 1),
+        (28, 1),
+        (29, 1),
+        (30, 1),
+        (31, 1),
+        (32, 1),
+        (36, 1),
+        (38, 1),
+        (40, 1),
+        (41, 1),
+        (42, 1),
+        (42, 2),
+        (43, 1),
+        (44, 1),
+        (45, 1),
+        (46, 1),
+        (50, 1),
+        (68, 1),
+    ]
+    for sura, ayah in targets:
+        vecs = emb.text_to_embedding(sura, ayah)
+        assert any(vec[emb.idx_rule_start + madd_6_idx] > 0 for vec in vecs), (
+            f"madd_6 missing for {sura}:{ayah}"
+        )
+
+
 def test_ikhfa_span_across_pause(emb):
     """Ikhfa on tanween should persist across pause marks/spaces (10:68 “وَلَدًا ۗ”)."""
     embeddings = emb.text_to_embedding(10, 68)
