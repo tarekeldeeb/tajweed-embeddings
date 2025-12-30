@@ -553,6 +553,7 @@ class TajweedEmbedder:
             filtered_idx = 0
             explicit_pause_indices: set[int] = set()
             filtered_letters: List[str] = []
+            pending_rule_indices: List[int] = []
 
             for idx_char, ch in enumerate(chars):
                 madd_on_letter = False
@@ -561,10 +562,13 @@ class TajweedEmbedder:
                     madd_on_letter = True
                 ch = self.char_aliases.get(ch, ch)
                 if ch in self.marker_rule_map:
-                    if last_vec is not None:
-                        rname = self.marker_rule_map[ch]
-                        ri = self.rule_to_index.get(rname)
-                        if ri is not None:
+                    rname = self.marker_rule_map[ch]
+                    ri = self.rule_to_index.get(rname)
+                    if ri is not None:
+                        if rname == "ishmam":
+                            # In Uthmani text, ishmam marker appears before the target letter.
+                            pending_rule_indices.append(ri)
+                        elif last_vec is not None:
                             last_vec[self.idx_rule_start + ri] = 1.0
                     continue
                 if ch not in self.letters:
@@ -639,6 +643,10 @@ class TajweedEmbedder:
                     vec[
                         self.idx_rule_start : self.idx_rule_start + self.n_rules
                     ] = rule_flags[filtered_idx]
+                if pending_rule_indices:
+                    for ri in pending_rule_indices:
+                        vec[self.idx_rule_start + ri] = 1.0
+                    pending_rule_indices.clear()
                 if ch in self.marker_rule_map:
                     rname = self.marker_rule_map[ch]
                     ri = self.rule_to_index.get(rname)
@@ -682,6 +690,9 @@ class TajweedEmbedder:
             # Ensure explicit maddah sequences retain madd haraka even if diacritic was stripped.
             if not embeddings and text:
                 embeddings.append(np.zeros(self.embedding_dim, dtype=float))
+            elif pending_rule_indices and last_vec is not None:
+                for ri in pending_rule_indices:
+                    last_vec[self.idx_rule_start + ri] = 1.0
 
             return embeddings
 

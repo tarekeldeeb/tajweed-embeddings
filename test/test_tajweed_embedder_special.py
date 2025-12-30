@@ -121,4 +121,23 @@ def test_rule_markers_set_rule_flags(emb):
         vec = out[0]
         ri = emb.rule_to_index[rule]
         assert vec[emb.idx_rule_start + ri] == 1.0
+
+
+def test_ishmam_marker_attaches_to_next_letter_in_12_11(emb):
+    """Ishmam marker in 12:11 should apply to the following letter."""
+    ishmam_idx = emb.rule_to_index.get("ishmam")
+    if ishmam_idx is None:
+        return
+    vecs = emb.text_to_embedding(12, 11)
+    assert len(vecs) > 21
+
+    prev_vec = vecs[20]
+    next_vec = vecs[21]
+    prev_letter = emb.index_to_letter[int(np.argmax(prev_vec[:emb.n_letters]))]
+    next_letter = emb.index_to_letter[int(np.argmax(next_vec[:emb.n_letters]))]
+
+    assert prev_letter == "م"
+    assert next_letter == "ن"
+    assert prev_vec[emb.idx_rule_start + ishmam_idx] == 0.0
+    assert next_vec[emb.idx_rule_start + ishmam_idx] > 0.0
 """Special-case behaviors (pause bits, unknowns, etc.)."""
