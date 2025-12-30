@@ -482,14 +482,8 @@ def label_ayah(params):
         return_json = False
     else:
         surah, ayah, text, rule_trees, return_json = params  # Multiprocessing...
-    # We have to cut out the basmala since it is, in effect, a separate verse.
-    # Rules that depend on ayah start/end stop working if it's kept in place.
-    # But we remember the offset so we can put everything back where we found it.
+    # Keep basmala in place so annotations align with the packaged Quran text.
     offset = 0
-    if surah not in (1, 9) and ayah == 1:
-        old_text = text
-        text = " ".join(text.split(" ")[4:])
-        offset = len(old_text) - len(text)
 
     # Initialize exemplar generators.
     rules_start_exemplars = {

@@ -19,7 +19,7 @@ def test_rule_counts_are_stable():
     expected = {
         "ghunnah": 4948,
         "ghunnah_tafkheem": 1016,
-        "hamzat_wasl": 13252,
+        "hamzat_wasl": 13599,
         "idghaam_ghunnah": 3527,
         "idghaam_mutajanisayn": 57,
         "idghaam_mutaqaribayn": 13,
@@ -28,8 +28,8 @@ def test_rule_counts_are_stable():
         "ikhfa": 5493,
         "ikhfa_shafawi": 483,
         "iqlab": 562,
-        "lam_shamsiyyah": 2733,
-        "madd_2": 48287,
+        "lam_shamsiyyah": 2957,
+        "madd_2": 48511,
         "madd_246": 4543,
         "madd_6": 149,
         "madd_munfasil": 2999,
@@ -39,4 +39,4 @@ def test_rule_counts_are_stable():
     }
 
     assert counts == expected
-    assert sum(counts.values()) == 99895
+    assert sum(counts.values()) == 100690
