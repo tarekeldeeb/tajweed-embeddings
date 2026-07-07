@@ -13,8 +13,10 @@ import numpy as np
 from tajweed_embeddings.util import download_quran_txt
 from tajweed_embeddings.util.normalization import normalize_superscript_alef
 
+from .embedding import TajweedEmbedding
 from .harakat_embedder import HarakatEmbedder
 from .letters_embedder import LettersEmbedder
+from .secondary_embedder import SecondaryPhonemeEmbedder
 from .sifat_embedder import SifatEmbedder
 from .sifat_editor import SifatEditor
 from .tajweed_rules_embedder import TajweedRulesEmbedder
@@ -139,6 +141,24 @@ class TajweedEmbedder:
             + self.n_pause
             + self.n_sifat
             + self.n_rules
+        )
+
+        # Secondary phoneme (waqf/ibtidāʾ) variant computation, always enabled.
+        self.secondary = SecondaryPhonemeEmbedder(
+            haraka_helper=self.haraka_helper,
+            sifat_embedder=self.sifat_embedder,
+            sifat_editor=self.sifat_editor,
+            sifat_data=self.sifat,
+            letter_to_index=self.letter_to_index,
+            rule_to_index=self.rule_to_index,
+            rule_names=self.rule_names,
+            n_letters=self.n_letters,
+            idx_haraka_start=self.idx_haraka_start,
+            n_harakat=self.n_harakat,
+            idx_sifat_start=self.idx_sifat_start,
+            n_sifat=self.n_sifat,
+            idx_rule_start=self.idx_rule_start,
+            n_rules=self.n_rules,
         )
 
     # ------------------------------------------------------------------
@@ -431,7 +451,7 @@ class TajweedEmbedder:
         ayah: Optional[int] = None,
         subtext: Optional[str] = None,
         count: int = 1,
-    ) -> List[np.ndarray]:
+    ) -> TajweedEmbedding:
         """
         Create tajwīd embeddings for:
 
@@ -439,6 +459,10 @@ class TajweedEmbedder:
         - Full āyah:      text_to_embedding(1, 1)
         - Custom subtext: text_to_embedding(1, 1, "بِسْمِ")
         - Multiple āyāt:  text_to_embedding(1, 1, count=3)  → āyāt 1-3
+
+        Returns a TajweedEmbedding: a list of primary (waṣl) vectors that also
+        carries pre-calculated secondary phoneme variants (stop_variants /
+        start_variants) for every word boundary.
         """
         if count <= 0:
             raise ValueError("count must be a positive integer")
@@ -457,7 +481,7 @@ class TajweedEmbedder:
             vec[
                 self.idx_sifat_start : self.idx_sifat_start + self.n_sifat
             ] = self.sifat_embedder.encode(self.sifat.get("آ", {}).get("sifat", {}))
-            return [vec]
+            return TajweedEmbedding([vec], words=[(0, 0)])
 
         def _embed_segment(
             text: str,
@@ -466,7 +490,8 @@ class TajweedEmbedder:
             apply_rules: bool,
             add_end_pause: bool,
             rule_flags_override: Optional[List[np.ndarray]] = None,
-        ) -> List[np.ndarray]:
+            cross_override: Optional[Tuple[Dict, Dict]] = None,
+        ) -> TajweedEmbedding:
             original_text = text
             text = self._normalize_text(text)
             # Collapse decomposed alif+maddah into precomposed glyph to avoid extra vector.
@@ -476,10 +501,7 @@ class TajweedEmbedder:
             word_last_indices: set[int] = set()
             current_word: List[int] = []
             raw_to_filtered: List[int] = []
-            words_info: List[Tuple[List[int], bool, bool]] = []
-            word_letter_raws: List[int] = []
-            word_has_madd = False
-            word_has_non_madd_diacritic = False
+            words_idx: List[List[int]] = []
             prev_filtered = -1
             for idx, ch in enumerate(chars):
                 norm_ch = self.char_aliases.get(ch, ch)
@@ -489,7 +511,6 @@ class TajweedEmbedder:
                     raw_to_filtered.append(filtered_len)
                     prev_filtered = filtered_len
                     current_word.append(filtered_len)
-                    word_letter_raws.append(idx)
                     filtered_len += 1
                 elif (
                     norm_ch in self.diacritic_chars
@@ -497,39 +518,21 @@ class TajweedEmbedder:
                     or norm_ch in self.pause_chars
                 ):
                     raw_to_filtered.append(prev_filtered)
-                    if norm_ch in self.diacritic_chars:
-                        if norm_ch == self.shadda_char:
-                            word_has_non_madd_diacritic = True
-                        else:
-                            base = self.haraka_base_map.get(norm_ch)
-                            if base == "madd":
-                                word_has_madd = True
-                            elif base is not None:
-                                word_has_non_madd_diacritic = True
                     continue
                 else:
                     raw_to_filtered.append(-1)
                     if current_word:
                         word_last_indices.add(current_word[-1])
-                        words_info.append(
-                            (
-                                word_letter_raws,
-                                word_has_madd,
-                                word_has_non_madd_diacritic,
-                            )
-                        )
+                        words_idx.append(current_word)
                         current_word = []
-                        word_letter_raws = []
-                        word_has_madd = False
-                        word_has_non_madd_diacritic = False
                     prev_filtered = -1
             if current_word:
                 word_last_indices.add(current_word[-1])
-                words_info.append(
-                    (word_letter_raws, word_has_madd, word_has_non_madd_diacritic)
-                )
+                words_idx.append(current_word)
 
-            # Rule flags
+            # Rule flags (+ cross-word rule maps feeding secondary variants)
+            cross_stop: Dict[int, set] = {}
+            cross_start: Dict[int, set] = {}
             if rule_flags_override is not None:
                 rule_flags = rule_flags_override
                 if len(rule_flags) != filtered_len:
@@ -537,9 +540,11 @@ class TajweedEmbedder:
                         "Rule flags length does not match filtered text length "
                         f"({len(rule_flags)} != {filtered_len})."
                     )
+                if cross_override is not None:
+                    cross_stop, cross_start = cross_override
             elif apply_rules and ayah_val is not None:
-                rule_flags = self.tajweed_rules.apply_rule_spans(
-                    sura_val, ayah_val, chars
+                rule_flags, cross_stop, cross_start = (
+                    self.tajweed_rules.apply_rule_spans_ex(sura_val, ayah_val, chars)
                 )
             else:
                 rule_flags = [
@@ -690,11 +695,25 @@ class TajweedEmbedder:
             # Ensure explicit maddah sequences retain madd haraka even if diacritic was stripped.
             if not embeddings and text:
                 embeddings.append(np.zeros(self.embedding_dim, dtype=float))
-            elif pending_rule_indices and last_vec is not None:
+                return TajweedEmbedding(embeddings)
+            if pending_rule_indices and last_vec is not None:
                 for ri in pending_rule_indices:
                     last_vec[self.idx_rule_start + ri] = 1.0
 
-            return embeddings
+            # Secondary phonemes: pre-calculate waqf/ibtidāʾ variants per word.
+            stop_variants, start_variants = self.secondary.compute(
+                embeddings,
+                filtered_letters,
+                words_idx,
+                cross_stop,
+                cross_start,
+            )
+            return TajweedEmbedding(
+                embeddings,
+                words=[(w[0], w[-1]) for w in words_idx],
+                stop_variants=stop_variants,
+                start_variants=start_variants,
+            )
 
         # Determine control path
         if ayah is None and subtext is None:
@@ -702,13 +721,13 @@ class TajweedEmbedder:
             if sura_key not in self.quran:
                 raise ValueError(f"Sura {sura_key} not found in quran.json")
             ayat_map = self.quran[sura_key]
-            embeddings: List[np.ndarray] = []
+            result = TajweedEmbedding()
             for a_num in sorted(ayat_map.keys(), key=int):
                 text = ayat_map[a_num]
-                embeddings.extend(
+                result.extend_segment(
                     _embed_segment(text, sura, int(a_num), True, True)
                 )
-            return embeddings
+            return result
 
         # If no ayah provided but custom text, embed as subtext
         if ayah is None:
@@ -751,8 +770,8 @@ class TajweedEmbedder:
                     add_end_pause=False,
                 )
             raw_to_filtered, _ = self._raw_to_filtered_map(full_chars)
-            rule_flags_full = self.tajweed_rules.apply_rule_spans(
-                sura, ayah, full_chars
+            rule_flags_full, cross_stop_full, cross_start_full = (
+                self.tajweed_rules.apply_rule_spans_ex(sura, ayah, full_chars)
             )
             sub_filtered_indices: List[int] = []
             last_idx = None
@@ -767,6 +786,17 @@ class TajweedEmbedder:
                         sub_filtered_indices.append(f_idx)
                         last_idx = f_idx
             rule_flags_sub = [rule_flags_full[i] for i in sub_filtered_indices]
+            remap = {old: new for new, old in enumerate(sub_filtered_indices)}
+            cross_stop_sub = {
+                remap[i]: rules
+                for i, rules in cross_stop_full.items()
+                if i in remap
+            }
+            cross_start_sub = {
+                remap[i]: rules
+                for i, rules in cross_start_full.items()
+                if i in remap
+            }
             return _embed_segment(
                 self.get_text(sura, ayah, subtext),
                 sura,
@@ -774,6 +804,7 @@ class TajweedEmbedder:
                 apply_rules=False,
                 add_end_pause=False,
                 rule_flags_override=rule_flags_sub,
+                cross_override=(cross_stop_sub, cross_start_sub),
             )
 
         sura_key = str(sura)
@@ -786,10 +817,10 @@ class TajweedEmbedder:
             if str(a_num) not in ayat_map:
                 raise ValueError(f"Ayah {sura}:{a_num} not found in quran.json")
 
-        embeddings: List[np.ndarray] = []
+        result = TajweedEmbedding()
         for a_num in range(start, end + 1):
             current_text = self.get_text(sura, a_num, subtext if a_num == start else None)
-            embeddings.extend(
+            result.extend_segment(
                 _embed_segment(
                     current_text,
                     sura,
@@ -800,7 +831,7 @@ class TajweedEmbedder:
             )
             if subtext is not None:
                 break
-        return embeddings
+        return result
 
     # ------------------------------------------------------------------
     # EMBEDDING → TEXT (rough reconstruction)
@@ -850,12 +881,16 @@ class TajweedEmbedder:
 
         return "".join(chars).rstrip()
 
-    def encoding_to_string(self, encoding, style: str = "short") -> str:
+    def encoding_to_string(
+        self, encoding, style: str = "short", secondary: bool = False
+    ) -> str:
         """
         Render embeddings in either compact ("short") or descriptive ("long") form.
 
         - short: values only, aligned with fixed column widths when rendering sequences.
         - long : labeled, descriptive output (previous default).
+        - secondary: when rendering a TajweedEmbedding sequence, also print the
+          waqf (⏹) and ibtidāʾ (▶) variant rows beneath their primary row.
         """
         if style not in ("short", "long"):
             raise ValueError("style must be 'short' or 'long'")
@@ -1030,22 +1065,34 @@ class TajweedEmbedder:
         if isinstance(encoding, (list, tuple)):
             if not encoding:
                 raise ValueError("Encoding sequence is empty")
+            stop_v = getattr(encoding, "stop_variants", {}) if secondary else {}
+            start_v = getattr(encoding, "start_variants", {}) if secondary else {}
             if style == "short":
-                rows_data = [_render_short(item) for item in encoding]
-                rows = [r for r, _, _ in rows_data]
+                idx_width = len(str(len(encoding) - 1))
+                entries: List[tuple[str, list[str], bool]] = []
+                for idx, item in enumerate(encoding):
+                    row, _, has_dim_rule = _render_short(item)
+                    entries.append(
+                        (f"[{str(idx).rjust(idx_width)}]", row, has_dim_rule)
+                    )
+                    if idx in start_v:
+                        row, _, has_dim_rule = _render_short(start_v[idx])
+                        entries.append((f"[{'▶'.rjust(idx_width)}]", row, has_dim_rule))
+                    if idx in stop_v:
+                        row, _, has_dim_rule = _render_short(stop_v[idx])
+                        entries.append((f"[{'⏹'.rjust(idx_width)}]", row, has_dim_rule))
                 col_widths = [
-                    max(1, max(_disp_width(row[i]) for row in rows))
-                    for i in range(len(rows[0]))
+                    max(1, max(_disp_width(entry[1][i]) for entry in entries))
+                    for i in range(len(entries[0][1]))
                 ]
-                idx_width = len(str(len(rows) - 1))
                 lines = []
-                for idx, (row, haraka_missing, has_dim_rule) in enumerate(rows_data):
+                for label, row, has_dim_rule in entries:
                     padded = [
                         _ljust_disp(val, col_widths[i]) for i, val in enumerate(row)
                     ]
                     padded = [_isolate_cell(val) for val in padded]
                     sep = f" {lrm}|{lrm} "
-                    line = f"[{str(idx).rjust(idx_width)}] {lrm}" + sep.join(padded)
+                    line = f"{label} {lrm}" + sep.join(padded)
                     if has_dim_rule:
                         line = _dim(line)
                     lines.append(line)
@@ -1054,6 +1101,14 @@ class TajweedEmbedder:
             formatted = []
             for idx, item in enumerate(encoding):
                 formatted.append(f"[{idx}] {self.encoding_to_string(item, style=style)}")
+                if idx in start_v:
+                    formatted.append(
+                        f"[{idx}▶] {self.encoding_to_string(start_v[idx], style=style)}"
+                    )
+                if idx in stop_v:
+                    formatted.append(
+                        f"[{idx}⏹] {self.encoding_to_string(stop_v[idx], style=style)}"
+                    )
             return "\n".join(formatted)
 
         # Single encoding

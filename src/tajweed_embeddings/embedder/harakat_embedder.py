@@ -28,6 +28,7 @@ class HarakatEmbedder:
             "kasratan",
             "dammatan",
             "madd",
+            "sukun_shadda",
         ]
         self.harakat_state_labels: List[str] = [
             "fatha",
@@ -42,6 +43,7 @@ class HarakatEmbedder:
             "kasratan",
             "dammatan",
             "madd",
+            "sukun+shadda",
         ]
         self.n_harakat: int = len(self.harakat_states)
         self.harakat_vectors: Dict[str, np.ndarray] = {
@@ -82,6 +84,7 @@ class HarakatEmbedder:
             "kasratan": ["ٍ"],
             "dammatan": ["ٌ"],
             "madd": [],
+            "sukun_shadda": ["ّ", "ْ"],
         }
         # Backwards compatibility: list of raw diacritic characters
         self.harakat_chars: List[str] = list(self.diacritic_chars)
@@ -117,6 +120,7 @@ class HarakatEmbedder:
             "kasratan": "__",
             "dammatan": "oo",
             "madd": "~",
+            "sukun_shadda": "ῶ",
         }
 
     # ------------------------------------------------------------------
@@ -128,7 +132,9 @@ class HarakatEmbedder:
         """Map base haraka + shadda flag to the explicit state key."""
         if base in ("fatha", "kasra", "damma"):
             return base + ("_shadda" if has_shadda else "")
-        if base in ("sukun", "sukun_zero"):
+        if base == "sukun":
+            return "sukun_shadda" if has_shadda else "sukun"
+        if base == "sukun_zero":
             return base
         if base in ("fathatan", "kasratan", "dammatan"):
             return base

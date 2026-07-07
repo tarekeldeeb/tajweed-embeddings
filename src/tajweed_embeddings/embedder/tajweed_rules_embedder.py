@@ -102,15 +102,31 @@ class TajweedRulesEmbedder:
 
     # ------------------------------------------------------------------
     def apply_rule_spans(self, sura, ayah, chars: List[str]) -> List[np.ndarray]:
+        """Rule flags only (see apply_rule_spans_ex for cross-word info)."""
+        flags, _, _ = self.apply_rule_spans_ex(sura, ayah, chars)
+        return flags
+
+    def apply_rule_spans_ex(
+        self, sura, ayah, chars: List[str]
+    ) -> Tuple[List[np.ndarray], Dict[int, set], Dict[int, set]]:
         """
-        Returns rule flags aligned to the filtered character sequence (letters only).
-        Each element is a rule one-hot vector of length `n_rules` for that filtered index.
+        Returns rule flags aligned to the filtered character sequence (letters only),
+        plus cross-word rule maps for secondary (waqf/ibtidāʾ) variants:
+
+        - cross_stop:  filtered idx → rule indices set by spans that continue into a
+          FOLLOWING word (dropped when the reciter stops on this word).
+        - cross_start: filtered idx → rule indices set by spans that began in a
+          PREVIOUS word (dropped when the reciter starts at this word).
         """
         norm_len = len(chars)
 
-        # First pass: map normalized text indices → filtered indices.
+        # First pass: map normalized text indices → filtered indices, and
+        # assign a word id to every filtered letter.
         norm_to_filtered: List[int] = [-1] * norm_len
+        word_ids: List[int] = []
         filtered_len = 0
+        wid = 0
+        emitted_in_word = 0
         for i, ch in enumerate(chars):
             norm_ch = self.char_aliases.get(ch, ch)
             if norm_ch == "آ":
@@ -120,13 +136,19 @@ class TajweedRulesEmbedder:
                 norm_ch = "ا"
             if norm_ch in self.letters:
                 norm_to_filtered[i] = filtered_len
+                word_ids.append(wid)
                 filtered_len += 1
+                emitted_in_word += 1
             elif i > 0 and (
                 norm_ch in self.diacritic_chars
                 or norm_ch in self.marker_chars
                 or norm_ch in self.pause_chars
             ):
                 norm_to_filtered[i] = norm_to_filtered[i - 1]
+            else:
+                if emitted_in_word:
+                    wid += 1
+                    emitted_in_word = 0
 
         # Build a mapping for the original classifier indices (which were produced
         # before collapsing the decomposed maddah sequence \"آ\" into \"آ\").
@@ -145,9 +167,11 @@ class TajweedRulesEmbedder:
         raw_len = len(raw_to_filtered)
 
         flags = [np.zeros(self.n_rules, dtype=float) for _ in range(filtered_len)]
+        cross_stop: Dict[int, set] = {}
+        cross_start: Dict[int, set] = {}
 
         if self.n_rules == 0 or filtered_len == 0:
-            return flags
+            return flags, cross_stop, cross_start
 
         key = (str(sura), str(ayah))
         anns = self.rules_index.get(key, [])
@@ -164,11 +188,25 @@ class TajweedRulesEmbedder:
             start = max(0, start)
             end = min(raw_len, end)
 
+            covered: List[int] = []
             for raw_idx in range(start, end):
                 f_idx = raw_to_filtered[raw_idx]
                 if f_idx < 0 or f_idx >= filtered_len:
                     continue
                 flags[f_idx][idx_rule] = 1.0
+                if not covered or covered[-1] != f_idx:
+                    covered.append(f_idx)
+
+            # Spans straddling a word boundary feed the secondary variants.
+            if covered:
+                wmin = word_ids[covered[0]]
+                wmax = word_ids[covered[-1]]
+                if wmin != wmax:
+                    for f_idx in covered:
+                        if word_ids[f_idx] < wmax:
+                            cross_stop.setdefault(f_idx, set()).add(idx_rule)
+                        if word_ids[f_idx] > wmin:
+                            cross_start.setdefault(f_idx, set()).add(idx_rule)
 
         # Fallback: mark silent when an alif/ya is followed (optionally via spaces) by hamzat wasl.
         silent_idx = self.rule_to_index.get("silent")
@@ -184,4 +222,4 @@ class TajweedRulesEmbedder:
                     if 0 <= f_idx_norm < filtered_len:
                         flags[f_idx_norm][silent_idx] = 1.0
 
-        return flags
+        return flags, cross_stop, cross_start

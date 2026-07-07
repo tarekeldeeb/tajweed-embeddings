@@ -47,6 +47,13 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         help="Optional custom text instead of the ayah from quran.json.",
     )
     parser.add_argument(
+        "-s",
+        "--secondary",
+        action="store_true",
+        help="Also print secondary phoneme rows: ⏹ = stop (waqf) variant, "
+        "▶ = start (ibtidāʾ) variant.",
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         action="store_true",
@@ -83,7 +90,11 @@ def main() -> None:
         )
         print(banner)
 
-    print(emb.encoding_to_string(embeddings, style=args.style))
+    print(
+        emb.encoding_to_string(
+            embeddings, style=args.style, secondary=args.secondary
+        )
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -1,4 +1,4 @@
 """Tajweed embeddings package."""
-from .embedder import TajweedEmbedder
+from .embedder import TajweedEmbedder, TajweedEmbedding
 
-__all__ = ["TajweedEmbedder"]
+__all__ = ["TajweedEmbedder", "TajweedEmbedding"]
