@@ -32,6 +32,11 @@ class TajweedEmbedder:
       - quran.json           : {"1": {"1": "...", "2": "...", ...}, "2": {...}, ...}
     """
 
+    # Bump whenever rules_gen output changes so stale generated rule files
+    # are rebuilt. "wasl-1": spans labeled in continuous recitation across
+    # āyah boundaries (no stop forced at āyah ends).
+    RULES_DATA_VERSION = "wasl-1"
+
     # ------------------------------------------------------------------
     # CONSTRUCTOR & DATA LOADING
     # ------------------------------------------------------------------
@@ -186,12 +191,16 @@ class TajweedEmbedder:
         quran_txt = rules_gen_output / "quran-uthmani.txt"
         quran_json = data_dir / "quran.json"
         rules_json = data_dir / "tajweed.rules.json"
+        rules_version = data_dir / "tajweed.rules.version"
 
-        # Rebuild rules JSON or source text if missing or invalid.
+        # Rebuild rules JSON or source text if missing, invalid or stale.
         need_rules = (
             (not rules_json.exists())
             or rules_json.stat().st_size == 0
             or not self._json_type_matches(rules_json, list)
+            or not rules_version.exists()
+            or rules_version.read_text(encoding="utf-8").strip()
+            != self.RULES_DATA_VERSION
         )
         need_quran_txt = (not quran_txt.exists()) or quran_txt.stat().st_size == 0
 
@@ -221,6 +230,7 @@ class TajweedEmbedder:
                     "Failed to generate tajweed.rules.json; ensure rules_gen dependencies "
                     "are installed (pip install -r src/tajweed_embeddings/rules_gen/requirements.txt)."
                 ) from exc
+            rules_version.write_text(self.RULES_DATA_VERSION, encoding="utf-8")
 
         # Build quran.json if missing or invalid.
         need_quran_json = (
@@ -670,7 +680,7 @@ class TajweedEmbedder:
                 self.n_harakat,
                 self.idx_sifat_start,
                 word_last_indices,
-                explicit_pause_indices,
+                set(),  # primary vectors are waṣl; stops live in stop_variants
             )
 
             pause_slice = slice(

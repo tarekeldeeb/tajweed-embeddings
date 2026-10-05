@@ -25,9 +25,14 @@ class SifatEditor:
         n_harakat: int,
         idx_sifat_start: int,
         word_last_indices: Set[int],
-        explicit_pause_indices: Set[int],
+        stop_indices: Set[int],
     ) -> None:
-        """Mutate sifat slices in-place based on contextual rules."""
+        """
+        Mutate sifat slices in-place based on contextual rules.
+
+        ``stop_indices`` are word-final letters the reciter stops on (waqf);
+        pass an empty set for continuous (waṣl) recitation.
+        """
         if not embeddings:
             return
 
@@ -112,9 +117,7 @@ class SifatEditor:
                     if next_letter in self.isti_la_letters and not is_kasra(next_base):
                         set_isti_la(i, True)
                         continue
-                if (i in word_last_indices) and (
-                    i in explicit_pause_indices or i == len(embeddings) - 1
-                ):
+                if i in stop_indices:
                     set_isti_la(i, True)
                     continue
                 set_isti_la(i, False)

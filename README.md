@@ -70,6 +70,7 @@ score = emb.score(sub, emb.text_to_embedding(1, 1, "بَسْمِ"))
 Notes:
 - `subtext` embeds arbitrary strings; diacritics/pause marks attach to the previous letter and do not increase vector count.
 - `count` embeds consecutive āyāt starting at `ayah`.
+- Primary vectors encode continuous recitation (waṣl) everywhere, āyah ends included: e.g. the ي of الرَّحِيمِ is `madd_2`, and idghām/ikhfāʾ/iqlāb/munfaṣil carry across āyah boundaries. Stop (waqf) and start (ibtidāʾ) realizations, such as madd ʿāriḍ (`madd_246`), qalqalah kubrā and iẓhār, live in `stop_variants` / `start_variants`; use `vecs.realize(stop_words=[...])` to materialize a recitation with stops.
 - `encoding_to_string(style="long")` produces labeled, multi-field output; `"short"` is tabular.
 
 ## CLI
@@ -91,41 +92,41 @@ Example output (full, collapsible):
 ```text
 % tajweed-embeddings --sura 2 --aya 1 --count 3
 ╔══════════════════════════════════════════════════════════╗
-║ TajweedEmbedder CLI                                      ║
+║ Tajweed Embeddings CLI                                   ║
 ║   For inspection only — use programmatically for models. ║
 ║   String output is a human view, NOT the numeric vectors.║
 ║                                                          ║
 ║ ┌ Index: row number                                      ║
 ║ │  ┌ Letter: glyph                                       ║
 ║ │  │   ┌ Tashkeel: Kasra ‿ , Fatha ^ , .. etc            ║
-║ │  │   │   ┌ Pause: stop mark (0/4/6 etc)                ║
-║ │  │   │   │   ┌ Jahr 🔊 , Hams 🤫                       ║
-║ │  │   │   │   │  ┌ Rikhw 💨 , Tawasot ➖ , Shidda 🚫    ║
-║ │  │   │   │   │  │  ┌ Isti'la 🔼 , Istifal 🔻           ║
-║ │  │   │   │   │  │  │  ┌ Infitah ▲ , Itbaq ⟂            ║
-║ │  │   │   │   │  │  │  │  ┌ Idhlaq 😮 , Ismat 😐        ║
-║ │  │   │   │   │  │  │  │  │    ┌ Rules: Tajweed flags   ║
-║ │  │   │   │   │  │  │  │  │    │                        ║
-╚═╪══╪═══╪═══╪═══╪══╪══╪══╪══╪════╪════════════════════════╝
+║ │  │   │    ┌ Pause: stop mark (0/4/6 etc)               ║
+║ │  │   │    │   ┌ Jahr 🔊 , Hams 🤫                      ║
+║ │  │   │    │   │  ┌ Rikhw 💨 , Tawasot ➖ , Shidda 🚫   ║
+║ │  │   │    │   │  │  ┌ Isti'la 🔼 , Istifal 🔻          ║
+║ │  │   │    │   │  │  │  ┌ Infitah ▲ , Itbaq ⟂           ║
+║ │  │   │    │   │  │  │  │  ┌ Idhlaq 😮 , Ismat 😐       ║
+║ │  │   │    │   │  │  │  │  │    ┌ Rules: Tajweed flags  ║
+║ │  │   │    │   │  │  │  │  │    │                       ║
+╚═╪══╪═══╪════╪═══╪══╪══╪══╪══╪════╪═══════════════════════╝
 [ 0] ب | ‿  | - | 🔊 🚫 🔻 ⟂ 😮 |                           
 [ 1] س | °  | - | 🤫 💨 🔻 ⟂ 😐 |                           
 [ 2] م | ‿  | ! | 🔊 ➖ 🔻 ⟂ 😮 |                           
-[ 3] ٱ |    | - | 🔊 💨 🔻 ⟂ 😐 |                           
+[ 3] ٱ |    | - | 🔊 💨 🔻 ⟂ 😐 | hamzat_wasl               
 [ 4] ل |    | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
 [ 5] ل | ώ  | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
 [ 6] ه | ‿  | ! | 🤫 💨 🔻 ⟂ 😐 |                           
-[ 7] ٱ |    | - | 🔊 💨 🔻 ⟂ 😐 |                           
-[ 8] ل |    | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
+[ 7] ٱ |    | - | 🔊 💨 🔻 ⟂ 😐 | hamzat_wasl               
+[ 8] ل |    | - | 🔊 ➖ 🔻 ⟂ 😮 | lam_shamsiyyah            
 [ 9] ر | ώ  | - | 🔊 ➖ 🔼 ⟂ 😮 |                           
 [10] ح | °  | - | 🤫 💨 🔻 ⟂ 😐 |                           
 [11] م | ^  | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
-[12] ـٰ |    | - | 🔊 💨 🔻 ⟂ 😐 |                           
+[12] ـٰ |    | - | 🔊 💨 🔻 ⟂ 😐 | madd_2                    
 [13] ن | ‿  | ! | 🔊 ➖ 🔻 ⟂ 😮 |                           
-[14] ٱ |    | - | 🔊 💨 🔻 ⟂ 😐 |                           
-[15] ل |    | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
+[14] ٱ |    | - | 🔊 💨 🔻 ⟂ 😐 | hamzat_wasl               
+[15] ل |    | - | 🔊 ➖ 🔻 ⟂ 😮 | lam_shamsiyyah            
 [16] ر | ώ  | - | 🔊 ➖ 🔼 ⟂ 😮 |                           
 [17] ح | ‿  | - | 🤫 💨 🔻 ⟂ 😐 |                           
-[18] ي |    | - | 🔊 💨 🔻 ⟂ 😐 |                           
+[18] ي |    | - | 🔊 💨 🔻 ⟂ 😐 | madd_2                    
 [19] م | ‿  | ! | 🔊 ➖ 🔻 ⟂ 😮 |                           
 [20] ا |    | - | 🔊 💨 🔻 ⟂ 😐 |                           
 [21] ل | ~  | - | 🔊 ➖ 🔻 ⟂ 😮 | madd_6                    
@@ -156,7 +157,7 @@ Example output (full, collapsible):
 [46] م | و  | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
 [47] ت | ώ  | - | 🤫 🚫 🔻 ⟂ 😐 |                           
 [48] ق | ‿  | - | 🔊 🚫 🔼 ⟂ 😐 |                           
-[49] ي |    | - | 🔊 💨 🔻 ⟂ 😐 | madd_246                  
+[49] ي |    | - | 🔊 💨 🔻 ⟂ 😐 | madd_2                    
 [50] ن | ^  | ⏹ | 🔊 ➖ 🔻 ⟂ 😮 |                           
 [51] ٱ |    | - | 🔊 💨 🔻 ⟂ 😐 |                           
 [52] ل | ώ  | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
@@ -204,8 +205,8 @@ Example output (full, collapsible):
 [94] ن |    | - | 🔊 ➖ 🔻 ⟂ 😮 | ikhfa                     
 [95] ف | ‿  | - | 🤫 💨 🔻 ⟂ 😮 |                           
 [96] ق | و  | - | 🔊 🚫 🔼 ⟂ 😐 |                           
-[97] و |    | - | 🔊 💨 🔻 ⟂ 😐 | madd_246                  
-[98] ن | ^  | ⏹ | 🔊 ➖ 🔻 ⟂ 😮 |     
+[97] و |    | - | 🔊 💨 🔻 ⟂ 😐 | madd_2                    
+[98] ن | ^  | ⏹ | 🔊 ➖ 🔻 ⟂ 😮 |                           
 ```
 </details>
 

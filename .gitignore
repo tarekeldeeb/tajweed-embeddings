@@ -208,3 +208,4 @@ __marimo__/
 src/tajweed_embeddings/rules_gen/output/quran-uthmani.txt
 src/tajweed_embeddings/data/quran.json
 src/tajweed_embeddings/data/tajweed.rules.json
+src/tajweed_embeddings/data/tajweed.rules.version

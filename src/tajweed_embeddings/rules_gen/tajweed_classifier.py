@@ -476,14 +476,24 @@ def run_tree(tree, exemplar):
 
 
 def label_ayah(params):
-    # Support older 4-tuple call signature by defaulting return_json to False.
+    # Support older 4/5-tuple call signatures (no waṣl continuation).
+    next_text = None
     if len(params) == 4:
         surah, ayah, text, rule_trees = params  # Multiprocessing...
         return_json = False
-    else:
+    elif len(params) == 5:
         surah, ayah, text, rule_trees, return_json = params  # Multiprocessing...
+    else:
+        surah, ayah, text, rule_trees, return_json, next_text = params
     # Keep basmala in place so annotations align with the packaged Quran text.
     offset = 0
+    # Label in continuous recitation (waṣl): the trees treat end-of-text as a
+    # stop, so the following āyah is appended as context. Spans are clipped to
+    # this āyah below; the part crossing into the next āyah is carried over.
+    ayah_text = text
+    ayah_len = len(text)
+    if next_text:
+        text = text + " " + next_text
 
     # Initialize exemplar generators.
     rules_start_exemplars = {
@@ -598,15 +608,114 @@ def label_ayah(params):
     if to_drop:
         annotations = [a for a in annotations if id(a) not in to_drop]
 
+    # Tanwīn al-fatḥ seat (عَلِيمًا / هُدًى): the ا/ى is only voiced as madd
+    # al-ʿiwaḍ at a stop, so in waṣl it is silent rather than madd_2.
+    def is_tanween_fath_seat(pos):
+        if text[pos] not in "اى":
+            return False
+        j = pos - 1
+        while j >= 0 and unicodedata.category(text[j]) == "Mn":
+            if text[j] == "ً":
+                return True
+            j -= 1
+        return False
+
+    seats = {
+        i for i in range(len(text))
+        if is_tanween_fath_seat(i)
+    }
+    annotations = [
+        a for a in annotations
+        if not (a["rule"] == "madd_2" and a["end"] - a["start"] == 1
+                and a["start"] in seats)
+    ]
+    silent_starts = {a["start"] for a in annotations if a["rule"] == "silent"}
+    annotations.extend(
+        {"rule": "silent", "start": i, "end": i + 1}
+        for i in sorted(seats - silent_starts)
+    )
+
+    # Rules triggered by the next letter: the trees misfire on letters outside
+    # the trigger set, e.g. ikhfāʾ next to idghām after a tanwīn seat
+    # (سُجَّدًا وَ), or ikhfāʾ shafawī on a muqaṭṭaʿāt mīm followed by the next
+    # āyah (الٓمٓ ذَٰلِكَ is iẓhār shafawī).
+    trigger_letters = {
+        "ikhfa": set("تثجدذزسشصضطظفقك"),
+        "ghunnah_tafkheem": set("صضطقظ"),
+        "ikhfa_shafawi": {"ب"},
+    }
+
+    def next_base_letter(pos):
+        j = pos + 1
+        while j < len(text) and (
+            unicodedata.category(text[j]) == "Mn"
+            or text[j] in " ۖۗۚۛۜۘۙ"
+            or j in seats
+        ):
+            j += 1
+        return text[j] if j < len(text) else None
+
+    annotations = [
+        a for a in annotations
+        if a["rule"] not in trigger_letters
+        or next_base_letter(a["start"]) in trigger_letters[a["rule"]]
+    ]
+
     assert all(len(q) == 0 for q in annotations_run.values()), \
         "Some rules left hanging at end of ayah @ %d: %s (%d:%d) %s" % \
         (len(text), annotations_run, surah, ayah, annotations)
+
+    # Clip to this āyah. Spans crossing into the next āyah are marked
+    # "continues" here; their tail is returned as "carry_over" so the caller
+    # can attach it to the next āyah as a "continued" span.
+    carry_over = []
+    if next_text:
+        next_offset = ayah_len + 1
+        clipped = []
+        for ann in annotations:
+            if ann["start"] >= ayah_len:
+                continue
+            if ann["end"] > ayah_len:
+                tail_end = ann["end"] - next_offset
+                ann = dict(ann, end=ayah_len)
+                if tail_end > 0:
+                    ann["continues"] = True
+                    carry_over.append({
+                        "rule": ann["rule"],
+                        "start": 0,
+                        "end": tail_end,
+                        "continued": True,
+                    })
+            clipped.append(ann)
+        annotations = clipped
+        # A final ا/ى is silent in waṣl before the next āyah's hamzat waṣl
+        # (the runtime applies the same fallback inside an āyah).
+        last_base = ayah_len - 1
+        while last_base > 0 and (
+            unicodedata.category(ayah_text[last_base]) == "Mn"
+            or ayah_text[last_base] in " ۖۗۚۛۜۘۙ"
+        ):
+            last_base -= 1
+        if (
+            ayah_text[last_base] in "اى"
+            and last_base not in seats  # already silent in waṣl
+            and next_text.lstrip().startswith("ٱ")
+        ):
+            annotations.append({
+                "rule": "silent",
+                "start": last_base,
+                "end": last_base + 1,
+                "continues": True,
+            })
+    text = ayah_text
+
     json = {
         "surah": surah,
         "ayah": ayah,
         "annotations": sorted(annotations, key=lambda x: x["start"])
     }
     if return_json:
+        json["carry_over"] = carry_over
         return json
     else:
         e = embedding()
@@ -684,12 +793,30 @@ if __name__ == "__main__":
         expected_counts[surah] = expected_counts.get(surah, 0) + 1
         tasks.append((surah, ayah, text, rule_trees, args.json))
 
+    # Waṣl context: each āyah is followed by the next one in muṣḥaf order,
+    # across sūrah boundaries; the last āyah wraps to the first (khatm).
+    tasks = [
+        task + (tasks[(k + 1) % len(tasks)][2],) for k, task in enumerate(tasks)
+    ]
+
     # Perform classification.
     eprint("\nPerforming classification..")
     pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
     results = []
     for result in tqdm.tqdm(pool.imap(label_ayah, tasks), total=len(tasks)):
         results.append(result)
+
+    # Attach spans carried over from the previous āyah.
+    if args.json:
+        carried = []
+        for result in results:
+            carried.append(result.pop("carry_over", []))
+        for k, result in enumerate(results):
+            incoming = carried[k - 1]  # k == 0 wraps to the last āyah
+            if incoming:
+                result["annotations"] = sorted(
+                    incoming + result["annotations"], key=lambda x: x["start"]
+                )
 
     # Basic sanity check: we should emit as many ayat per surah as we read in.
     if args.json:

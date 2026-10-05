@@ -12,14 +12,16 @@ Stop (waqf) rules implemented:
      carries the 2-count madd (haraka=madd + madd_2).
   3. Tāʾ marbūṭa → hāʾ sākinah (letter substitution, tanwīn dropped).
   4. Qalqalah kubrā — final ق ط ب ج د flagged qalqalah once sākin.
-  5. Madd ʿāriḍ lil-sukūn — madd letter before the now-sākin final:
-     madd_2 → madd_246.
+  5. Madd ʿāriḍ lil-sukūn — madd (or līn) letter before the now-sākin final:
+     madd_2 → madd_246. Primary vectors are pure waṣl, so this is the only
+     place madd_246 is produced.
   6. Hāʾ ṣilah — small ۥ/ۦ after pronoun hāʾ silenced; hāʾ → sukūn.
   7. Un-silencing — word-final ا/ى silenced only by the next word's hamzat
      waṣl is restored to madd_2 at stop.
   8. Cross-word assimilation undo — ikhfāʾ/idghām/iqlāb flags from spans that
-     continue into the next word are cleared (iẓhār at stop); a cleared
-     madd_munfasil reverts to madd_2.
+     continue into the next word (or next āyah) are cleared (iẓhār at stop),
+     as are word-final ikhfāʾ/iqlāb/munfaṣil flags; a cleared madd_munfasil
+     reverts to madd_2.
   9. Rāʾ/lām tafkhīm re-evaluated under the stopped ending.
 
 Start (ibtidāʾ) rules implemented:
@@ -54,6 +56,7 @@ class SecondaryPhonemeEmbedder:
     HAMZA_LETTERS = {"ء", "أ", "إ", "ؤ", "ئ"}
     MADD_SEAT_LETTERS = {"ا", "ى"}
     SMALL_SILA_LETTERS = {"ۥ", "ۦ"}
+    MADD_LETTERS = {"ا", "ى", "ي", "و", "ٰ", "ۥ", "ۦ"}
     MADD_RULE_NAMES = ("madd_2", "madd_6", "madd_246", "madd_muttasil", "madd_munfasil")
     # Rules whose cross-word clearing leaves a bare nasal that must take sukūn.
     NASAL_ASSIMILATION_RULES = {
@@ -66,6 +69,8 @@ class SecondaryPhonemeEmbedder:
         "idghaam_mutajanisayn",
         "idghaam_mutaqaribayn",
     }
+    # Nasal rules a word-final nūn/tanwīn only gets from the next word.
+    WORD_FINAL_NASAL_RULES = ("ikhfa", "ikhfa_shafawi", "ghunnah_tafkheem", "iqlab")
     # Hamzat waṣl: classical samāʿī nouns start with kasra despite letter shape.
     WASL_KASRA_NOUN_PREFIXES = ("ٱسم", "ٱبن", "ٱمرؤ", "ٱمرأ", "ٱثن", "ٱيم")
     # Verbs whose third-letter damma is ʿāriḍah (temporary) → start with kasra.
@@ -244,6 +249,27 @@ class SecondaryPhonemeEmbedder:
                     # Bare assimilated nasal reverts to iẓhār with sukūn.
                     self._set_haraka(vec, "sukun")
 
+        # (8) Word-final ikhfāʾ/iqlāb spans cover only this word's
+        # letters, never the next word that triggers them, so clear them on
+        # the final letters directly (the letter before a tanwīn-fatḥ seat
+        # alif included).
+        final_letters = [idxs[-1]]
+        if len(idxs) >= 2 and letters[idxs[-1]] in self.MADD_SEAT_LETTERS:
+            final_letters.append(idxs[-2])
+        for i in final_letters:
+            for rule in self.WORD_FINAL_NASAL_RULES:
+                if self._flag_on(cur(i), rule):
+                    self._set_flag(mut(i), rule, False)
+        # Munfaṣil sits on the trailing madd letters (e.g. ـىٰٓ); an inner one
+        # (يَٰٓأَيُّهَا) belongs to the word itself and is kept.
+        for i in reversed(idxs):
+            if letters[i] not in self.MADD_LETTERS:
+                break
+            if self._flag_on(cur(i), "madd_munfasil"):
+                vec = mut(i)
+                self._set_flag(vec, "madd_munfasil", False)
+                self._set_flag(vec, "madd_2", True)
+
         last = idxs[-1]
         letter_last = letters[last]
         effective_final = last
@@ -325,8 +351,14 @@ class SecondaryPhonemeEmbedder:
                 before_state = (
                     self._haraka_state(cur(idxs[pos - 2])) if pos > 1 else None
                 )
-                if self._is_madd_carrier(
-                    prev_vec, letters[prev_i], before_state
+                is_leen = (
+                    letters[prev_i] in {"و", "ي"}
+                    and self._haraka_state(prev_vec) in ("sukun", "sukun_zero")
+                    and before_state == "fatha"
+                )
+                if (
+                    is_leen
+                    or self._is_madd_carrier(prev_vec, letters[prev_i], before_state)
                 ) and not self._flag_on(prev_vec, "silent"):
                     vec = mut(prev_i)
                     self._set_flag(vec, "madd_2", False)

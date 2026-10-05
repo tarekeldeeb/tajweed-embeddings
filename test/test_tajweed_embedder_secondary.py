@@ -213,3 +213,108 @@ def test_variants_do_not_touch_pause_slice(emb):
     sl = slice(emb.idx_pause_start, emb.idx_pause_start + emb.n_pause)
     for i, var in out.stop_variants.items():
         assert np.array_equal(var[sl], out[i][sl])
+
+
+# ----------------------------------------------------------------------
+# Āyah ends: primary vectors are waṣl; waqf rules live in stop variants.
+# ----------------------------------------------------------------------
+def test_ayah_end_madd_is_wasl_in_primary(emb):
+    """الرَّحِيمِ ending 1:1: ي is madd_2 in waṣl, madd ʿāriḍ only at stop."""
+    out = emb.text_to_embedding(1, 1)
+    last = len(out) - 1
+    assert _haraka(emb, out[last]) == "kasra"
+    assert "madd_2" in _rules(emb, out[last - 1])
+    assert "madd_246" not in _rules(emb, out[last - 1])
+    var = out.stop_variants[last - 1]
+    assert "madd_246" in _rules(emb, var)
+    assert "madd_2" not in _rules(emb, var)
+    assert _haraka(emb, out.stop_variants[last]) == "sukun"
+
+
+def test_madd_246_never_in_primary(emb):
+    """madd_246 is waqf-only: absent from every primary vector of a sūrah."""
+    out = emb.text_to_embedding(2)
+    idx = emb.rule_to_index["madd_246"]
+    assert not any(vec[emb.idx_rule_start + idx] > 0 for vec in out)
+    assert any(
+        vec[emb.idx_rule_start + idx] > 0 for vec in out.stop_variants.values()
+    )
+
+
+def test_ayah_end_qalqalah_only_at_stop(emb):
+    """ٱلصَّمَدُ ending 112:2: voweled د has no qalqalah until stopped on."""
+    out = emb.text_to_embedding(112, 2)
+    last = len(out) - 1
+    assert "qalqalah" not in _rules(emb, out[last])
+    var = out.stop_variants[last]
+    assert _haraka(emb, var) == "sukun"
+    assert "qalqalah" in _rules(emb, var)
+
+
+def test_cross_ayah_idghaam(emb):
+    """عَظِيمٌ ۝ وَمِنَ (2:7 → 2:8): idghām in waṣl, iẓhār at stop / start."""
+    out = emb.text_to_embedding(2, 7, count=2)
+    end_7 = out.words[len(emb.text_to_embedding(2, 7).words) - 1][1]
+    start_8 = end_7 + 1
+    assert "idghaam_ghunnah" in _rules(emb, out[end_7])
+    assert "idghaam_ghunnah" not in _rules(emb, out.stop_variants[end_7])
+    assert "idghaam_ghunnah" in _rules(emb, out[start_8])
+    assert "idghaam_ghunnah" not in _rules(emb, out.start_variants[start_8])
+
+
+def test_ayah_end_ikhfa_cleared_at_stop(emb):
+    """رَّحِيمٌ ۝ قَدْ (2:143 → 2:144): ikhfāʾ in waṣl only."""
+    out = emb.text_to_embedding(2, 143)
+    last = len(out) - 1
+    assert "ikhfa" in _rules(emb, out[last])
+    assert "ikhfa" not in _rules(emb, out.stop_variants[last])
+
+
+def test_cross_ayah_madd_munfasil(emb):
+    """زَكَرِيَّآ ۝ إِذْ (19:2 → 19:3): munfaṣil in waṣl, madd_2 at stop."""
+    out = emb.text_to_embedding(19, 2)
+    last = len(out) - 1
+    assert "madd_munfasil" in _rules(emb, out[last])
+    var = out.stop_variants[last]
+    assert "madd_munfasil" not in _rules(emb, var)
+    assert "madd_2" in _rules(emb, var)
+
+
+def test_cross_ayah_silent_alif(emb):
+    """ٱلْعُلَى ۝ ٱلرَّحْمَٰنُ (20:4 → 20:5): ى silent in waṣl, voiced at stop."""
+    out = emb.text_to_embedding(20, 4)
+    last = len(out) - 1
+    assert "silent" in _rules(emb, out[last])
+    var = out.stop_variants[last]
+    assert "silent" not in _rules(emb, var)
+    assert "madd_2" in _rules(emb, var)
+
+
+def test_madd_leen_at_stop(emb):
+    """خَوْفٍۭ ending 106:4: the līn و becomes madd ʿāriḍ only at stop."""
+    out = emb.text_to_embedding(106, 4)
+    last = len(out) - 1
+    assert "madd_246" not in _rules(emb, out[last - 1])
+    assert "madd_246" in _rules(emb, out.stop_variants[last - 1])
+
+
+def test_munfasil_on_trailing_madd_run_cleared_at_stop(emb):
+    """لِتَشْقَىٰٓ ending 20:2: munfaṣil on both ى and ـٰ drops at stop."""
+    out = emb.text_to_embedding(20, 2)
+    stopped = out.realize(stop_words=[len(out.words) - 1])
+    for i in (len(out) - 2, len(out) - 1):
+        assert "madd_munfasil" in _rules(emb, out[i])
+        assert "madd_munfasil" not in _rules(emb, stopped[i])
+        assert "madd_2" in _rules(emb, stopped[i])
+
+
+def test_word_internal_munfasil_kept_at_stop(emb):
+    """يَٰٓأَيُّهَا (2:21): the munfaṣil inside the word survives a stop on it."""
+    out = emb.text_to_embedding(2, 21)
+    first, last = out.words[0]
+    stopped = out.realize(stop_words=[0])
+    flagged = [
+        i for i in range(first, last + 1) if "madd_munfasil" in _rules(emb, out[i])
+    ]
+    assert flagged
+    assert all("madd_munfasil" in _rules(emb, stopped[i]) for i in flagged)

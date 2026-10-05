@@ -419,12 +419,15 @@ def test_first_mid_last_ayah_embeddings_per_sura(emb):
 
 
 def test_all_rules_present_in_corpus_embeddings(emb):
-    """All tajwīd rules from tajweed.rules.json must appear in embeddings somewhere."""
+    """
+    All tajwīd rules must appear in embeddings somewhere. Waqf-only rules
+    (madd_246) appear in stop variants, never in the waṣl primary vectors.
+    """
     assert emb.n_rules == len(emb.rule_names)
     seen_rules = set()
     for sura in sorted(int(k) for k in emb.quran.keys()):
         vecs = emb.text_to_embedding(sura)
-        for vec in vecs:
+        for vec in list(vecs) + list(vecs.stop_variants.values()):
             rules_slice = vec[emb.idx_rule_start:]
             seen_rules.update(np.nonzero(rules_slice > 0)[0].tolist())
         if len(seen_rules) == emb.n_rules:

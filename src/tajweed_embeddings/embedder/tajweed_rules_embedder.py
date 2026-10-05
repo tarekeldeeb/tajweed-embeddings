@@ -10,6 +10,31 @@ import numpy as np
 class TajweedRulesEmbedder:
     """Rule spans, pause categories, and helpers."""
 
+    # Span rules emitted by rules_gen. Fixed so the embedding layout does not
+    # depend on which rules occur in the data (e.g. madd_246 is a waqf-only
+    # rule: it never appears in the waṣl spans, only in stop variants).
+    SPAN_RULE_NAMES = (
+        "ghunnah",
+        "ghunnah_tafkheem",
+        "hamzat_wasl",
+        "idghaam_ghunnah",
+        "idghaam_mutajanisayn",
+        "idghaam_mutaqaribayn",
+        "idghaam_no_ghunnah",
+        "idghaam_shafawi",
+        "ikhfa",
+        "ikhfa_shafawi",
+        "iqlab",
+        "lam_shamsiyyah",
+        "madd_2",
+        "madd_246",
+        "madd_6",
+        "madd_munfasil",
+        "madd_muttasil",
+        "qalqalah",
+        "silent",
+    )
+
     def __init__(
         self,
         rules: List[Dict],
@@ -26,7 +51,7 @@ class TajweedRulesEmbedder:
         self.marker_chars = marker_chars
         self.pause_chars = pause_chars
 
-        rule_names_set = set()
+        rule_names_set = set(self.SPAN_RULE_NAMES)
         for entry in rules:
             anns = entry.get("annotations", [])
             for ann in anns:
@@ -196,6 +221,16 @@ class TajweedRulesEmbedder:
                 flags[f_idx][idx_rule] = 1.0
                 if not covered or covered[-1] != f_idx:
                     covered.append(f_idx)
+
+            # Spans straddling an āyah boundary: "continues" into the next
+            # āyah (dropped at a stop here), "continued" from the previous one
+            # (dropped when starting here).
+            if ann.get("continues"):
+                for f_idx in covered:
+                    cross_stop.setdefault(f_idx, set()).add(idx_rule)
+            if ann.get("continued"):
+                for f_idx in covered:
+                    cross_start.setdefault(f_idx, set()).add(idx_rule)
 
             # Spans straddling a word boundary feed the secondary variants.
             if covered:
