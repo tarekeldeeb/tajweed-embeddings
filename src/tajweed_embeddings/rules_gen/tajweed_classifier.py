@@ -758,9 +758,8 @@ if __name__ == "__main__":
     parser.add_argument('--output', type=str, default=None,
                         help='Path to write output file. Defaults to STDOUT.')
     global args
-    global dict
     args = parser.parse_args()
-    dict = {'h'}
+    dictionary_chars = {'h'}
     # Load rules from incredibly high-tech datastore.
     rule_trees = {}
     rule_start_files = sorted(RULE_TREES_DIR.glob("*.start.json"))
@@ -870,9 +869,9 @@ if __name__ == "__main__":
     # Print the optional Dictionary
     if args.dictionary:
         for i in results:
-            dict = dict.union(set(i.split('|')[2]))
+            dictionary_chars = dictionary_chars.union(set(i.split('|')[2]))
         d = open('dictionary.txt', 'w')
         d.write('# Quran Alphabets')
-        d.write('\n'.join(sorted(dict)))
+        d.write('\n'.join(sorted(dictionary_chars)))
         d.write('\n#New Line')
         d.close()
