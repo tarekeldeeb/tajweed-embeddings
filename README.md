@@ -80,6 +80,7 @@ Inspect embeddings without writing code:
 ```bash
 tajweed-embeddings --sura 1 --aya 1 --style short
 tajweed-embeddings --sura 2 --aya 1 --count 3 --style long
+tajweed-embeddings --sura 1 --aya 1 --secondary   # also show waqf/ibtidāʾ variant rows
 ```
 
 Outputs a human-readable view of the vectors (for inspection; not the raw numeric arrays).
@@ -209,6 +210,84 @@ Example output (full, collapsible):
 [98] ن | ^  | ⏹ | 🔊 ➖ 🔻 ⟂ 😮 |                           
 ```
 </details>
+
+### Secondary (waqf / ibtidāʾ) rules
+
+Each row is the waṣl (continuous) pronunciation. `--secondary` adds the
+pre-computed variant rows beneath the phoneme they replace:
+
+- `[⏹]` **stop (waqf)** variant, used when the reciter stops on that word: sukūn ʿāriḍ on the final
+  letter, and `madd_2` → `madd_246` (madd ʿāriḍ lil-sukūn) on the madd letter before it.
+- `[▶]` **start (ibtidāʾ)** variant, used when the reciter starts at that word: hamzat waṣl `ٱ` is
+  voiced as `أ` with fatḥa (definite article), kasra or ḍamma.
+
+<details>
+<summary>tajweed-embeddings --sura 1 --aya 1 --secondary</summary>
+
+```text
+% tajweed-embeddings --sura 1 --aya 1 --secondary
+╔══════════════════════════════════════════════════════════╗
+║ Tajweed Embeddings CLI                                   ║
+║   For inspection only — use programmatically for models. ║
+║   String output is a human view, NOT the numeric vectors.║
+║                                                          ║
+║ ┌ Index: row number                                      ║
+║ │  ┌ Letter: glyph                                       ║
+║ │  │   ┌ Tashkeel: Kasra ‿ , Fatha ^ , .. etc            ║
+║ │  │   │    ┌ Pause: stop mark (0/4/6 etc)               ║
+║ │  │   │    │   ┌ Jahr 🔊 , Hams 🤫                      ║
+║ │  │   │    │   │  ┌ Rikhw 💨 , Tawasot ➖ , Shidda 🚫   ║
+║ │  │   │    │   │  │  ┌ Isti'la 🔼 , Istifal 🔻          ║
+║ │  │   │    │   │  │  │  ┌ Infitah ▲ , Itbaq ⟂           ║
+║ │  │   │    │   │  │  │  │  ┌ Idhlaq 😮 , Ismat 😐       ║
+║ │  │   │    │   │  │  │  │  │    ┌ Rules: Tajweed flags  ║
+║ │  │   │    │   │  │  │  │  │    │                       ║
+╚═╪══╪═══╪════╪═══╪══╪══╪══╪══╪════╪═══════════════════════╝
+[ 0] ب | ‿ | - | 🔊 🚫 🔻 ⟂ 😮 |               
+[ 1] س | ° | - | 🤫 💨 🔻 ⟂ 😐 |               
+[ 2] م | ‿ | ! | 🔊 ➖ 🔻 ⟂ 😮 |               
+[ ⏹] م | ° | ! | 🔊 ➖ 🔻 ⟂ 😮 |               
+[ 3] ٱ |   | - | 🔊 💨 🔻 ⟂ 😐 | hamzat_wasl   
+[ ▶] أ | ^ | - | 🤫 🚫 🔻 ⟂ 😐 |               
+[ 4] ل |   | - | 🔊 ➖ 🔻 ⟂ 😮 |               
+[ 5] ل | ώ | - | 🔊 ➖ 🔻 ⟂ 😮 |               
+[ 6] ه | ‿ | ! | 🤫 💨 🔻 ⟂ 😐 |               
+[ ⏹] ه | ° | ! | 🤫 💨 🔻 ⟂ 😐 |               
+[ 7] ٱ |   | - | 🔊 💨 🔻 ⟂ 😐 | hamzat_wasl   
+[ ▶] أ | ^ | - | 🤫 🚫 🔻 ⟂ 😐 |               
+[ 8] ل |   | - | 🔊 ➖ 🔻 ⟂ 😮 | lam_shamsiyyah
+[ 9] ر | ώ | - | 🔊 ➖ 🔼 ⟂ 😮 |               
+[10] ح | ° | - | 🤫 💨 🔻 ⟂ 😐 |               
+[11] م | ^ | - | 🔊 ➖ 🔻 ⟂ 😮 |               
+[12] ـٰ |   | - | 🔊 💨 🔻 ⟂ 😐 | madd_2        
+[ ⏹] ـٰ |   | - | 🔊 💨 🔻 ⟂ 😐 | madd_246      
+[13] ن | ‿ | ! | 🔊 ➖ 🔻 ⟂ 😮 |               
+[ ⏹] ن | ° | ! | 🔊 ➖ 🔻 ⟂ 😮 |               
+[14] ٱ |   | - | 🔊 💨 🔻 ⟂ 😐 | hamzat_wasl   
+[ ▶] أ | ^ | - | 🤫 🚫 🔻 ⟂ 😐 |               
+[15] ل |   | - | 🔊 ➖ 🔻 ⟂ 😮 | lam_shamsiyyah
+[16] ر | ώ | - | 🔊 ➖ 🔼 ⟂ 😮 |               
+[17] ح | ‿ | - | 🤫 💨 🔻 ⟂ 😐 |               
+[18] ي |   | - | 🔊 💨 🔻 ⟂ 😐 | madd_2        
+[ ⏹] ي |   | - | 🔊 💨 🔻 ⟂ 😐 | madd_246      
+[19] م | ‿ | ⏹ | 🔊 ➖ 🔻 ⟂ 😮 |               
+[ ⏹] م | ° | ⏹ | 🔊 ➖ 🔻 ⟂ 😮 |               
+```
+
+</details>
+
+The same variants are available programmatically:
+
+```python
+vecs = emb.text_to_embedding(1, 1)
+print(vecs.words)                       # [(0, 2), (3, 6), (7, 13), (14, 19)]
+print(sorted(vecs.stop_variants))       # [2, 6, 12, 13, 18, 19]
+print(sorted(vecs.start_variants))      # [3, 7, 14]
+
+# Stop on ٱلرَّحْمَٰنِ (word 2), then resume at ٱلرَّحِيمِ (word 3, implied):
+recited = vecs.realize(stop_words=[2])
+print(emb.encoding_to_string(recited))
+```
 
 ## Data + Regeneration
 
