@@ -77,6 +77,9 @@ class SecondaryPhonemeEmbedder:
     WASL_DAMMA_EXCEPTIONS = {"ٱمشوا", "ٱبنوا", "ٱقضوا", "ٱئتوا"}
     # iftaʿala verbs that begin with ٱل but are not the definite article.
     WASL_LAM_VERB_PREFIXES = ("ٱلتق", "ٱلتم")
+    # Stopped rāʾ read with tarqīq for the deleted yāʾ (وَٱلَّيْلِ إِذَا يَسْرِ,
+    # 89:4), although the vowel before it would give tafkhīm.
+    WAQF_TARQEEQ_RAA_WORDS = {"يسر"}
 
     def __init__(
         self,
@@ -367,6 +370,9 @@ class SecondaryPhonemeEmbedder:
         # (9) Re-evaluate rāʾ/lām tafkhīm inside the word under the stop.
         if pool:
             self._reapply_sifat(embeddings, letters, idxs, pool)
+            skeleton = "".join(letters[i] for i in idxs)
+            if letter_last == "ر" and skeleton in self.WAQF_TARQEEQ_RAA_WORDS:
+                mut(last)[self.idx_sifat_start + SifatEditor.ISTI_LA_BIT] = 0.0
         return pool
 
     def _reapply_sifat(
@@ -388,7 +394,7 @@ class SecondaryPhonemeEmbedder:
             self.n_harakat,
             self.idx_sifat_start,
             win_last,
-            win_last,
+            wasl_embeddings=[embeddings[i] for i in range(first, last + 1)],
         )
         for offset, vec in enumerate(window):
             i = first + offset

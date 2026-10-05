@@ -17,15 +17,15 @@ Tajwīd-aware embedding engine for Qur'ān (Uthmānī script). Encodes letters, 
 - Auto-bootstrap for missing data files (downloads Tanzil text and regenerates spans when absent).
 - CLI (`tajweed-embeddings`) and pytest coverage.
 
-## Embedding Layout (dim 90)
+## Embedding Layout (dim 86)
 
 ```
 [ letters | haraka | pause | sifat | rules ]
-    46       12        3       6       23
+    41       13        3       6       23
 ```
 
 - **Letters:** Uthmānī glyph set; pause glyphs live in the pause slice, not the letter one-hot.
-- **Haraka:** Explicit states including shadda combos, tanwīn, madd, sukūn, and zero-sukūn.
+- **Haraka:** Explicit states including shadda combos (incl. sukūn+shadda), tanwīn, madd, sukūn, and zero-sukūn.
 - **Pause:** 3-bit stop categories:
   - 0: do_not_stop
   - 1: word_boundary_emergency (default at word ends without explicit marks)
@@ -36,7 +36,7 @@ Tajwīd-aware embedding engine for Qur'ān (Uthmānī script). Encodes letters, 
   - 6: sakta (˽)
   - 7: lazem (⛔)
 - **Ṣifāt:** 6-bit compact vector (jahr/hams; rikhwah–tawassut–shiddah; isti'la/istifal; infitah/itbaq; idhlaq/ismat).
-- **Rules:** 23 flags (19 from `tajweed.rules.json` spans + 4 inline marker rules: tas_heel, imala, ishmam, optional_seen).
+- **Rules:** 23 flags (19 span rules + 4 inline marker rules: tas_heel, imala, ishmam, optional_seen). `madd_246` is waqf-only: it is set in stop variants, never in waṣl spans.
 
 ## Install
 
@@ -60,7 +60,7 @@ emb = TajweedEmbedder()
 vecs = emb.text_to_embedding(1, 1)              # sura 1, āyah 1
 sub = emb.text_to_embedding(1, 1, "بِسْمِ")     # custom text (rules skipped)
 
-print(emb.embedding_dim)                        # 90
+print(emb.embedding_dim)                        # 86
 print(emb.encoding_to_string(sub, style="short"))
 
 round_trip = emb.embedding_to_text(sub)
@@ -151,7 +151,7 @@ Example output (full, collapsible):
 [40] ه | ‿  | ⋀ | 🤫 💨 🔻 ⟂ 😐 |                           
 [41] ه | و  | - | 🤫 💨 🔻 ⟂ 😐 |                           
 [42] د | ^^ | - | 🔊 🚫 🔻 ⟂ 😐 | idghaam_no_ghunnah        
-[43] ى |    | ! | 🔊 💨 🔻 ⟂ 😐 | idghaam_no_ghunnah, madd_2
+[43] ى |    | ! | 🔊 💨 🔻 ⟂ 😐 | idghaam_no_ghunnah, silent
 [44] ل | ῳ  | - | 🔊 ➖ 🔻 ⟂ 😮 | idghaam_no_ghunnah        
 [45] ل | °  | - | 🔊 ➖ 🔻 ⟂ 😮 |                           
 [46] م | و  | - | 🔊 ➖ 🔻 ⟂ 😮 |                           

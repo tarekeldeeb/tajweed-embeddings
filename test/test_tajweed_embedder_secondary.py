@@ -318,3 +318,95 @@ def test_word_internal_munfasil_kept_at_stop(emb):
     ]
     assert flagged
     assert all("madd_munfasil" in _rules(emb, stopped[i]) for i in flagged)
+
+
+def test_tanween_fath_seat_silent_in_wasl(emb):
+    """عَلِيمًا (4:11, mid-āyah): seat alif is silent in waṣl, madd at stop."""
+    out = emb.text_to_embedding(4, 11, "عَلِيمًا")
+    last = len(out) - 1
+    assert "silent" in _rules(emb, out[last])
+    assert "madd_2" not in _rules(emb, out[last])
+    var = out.stop_variants[last]
+    assert "silent" not in _rules(emb, var)
+    assert "madd_2" in _rules(emb, var)
+
+
+def test_no_ikhfa_before_idghaam_letter(emb):
+    """سُجَّدًا وَقُولُوا۟ (2:58): idghām only, no spurious ikhfāʾ."""
+    out = emb.text_to_embedding(2, 58, "سُجَّدًا وَقُولُوا۟")
+    first, last = out.words[0]
+    rules = set().union(*(_rules(emb, out[i]) for i in range(first, last + 1)))
+    assert "idghaam_ghunnah" in rules
+    assert "ikhfa" not in rules
+
+
+def test_ghunnah_tafkheem_only_before_heavy_letters(emb):
+    """مَن يَقُولُ (2:8) is idghām; ikhfāʾ tafkhīm needs ص ض ط ق ظ next."""
+    out = emb.text_to_embedding(2, 8, "مَن يَقُولُ")
+    assert not any("ghunnah_tafkheem" in _rules(emb, v) for v in out)
+
+
+@pytest.mark.parametrize(
+    "sura,ayah,word,tafkheem",
+    [
+        (2, 173, "غَفُورٌ", True),
+        (2, 24, "ٱلنَّارُ", True),
+        (97, 1, "ٱلْقَدْرِ", True),
+        (89, 1, "وَٱلْفَجْرِ", True),
+        (12, 21, "مِّصْرَ", True),
+        (54, 11, "مُّنْهَمِرٍ", False),
+        (15, 9, "ٱلذِّكْرَ", False),
+        (2, 20, "قَدِيرٌ", False),
+        (34, 12, "ٱلْقِطْرِ", False),
+        (74, 1, "ٱلْمُدَّثِّرُ", False),
+        (2, 2, "خَيْرٌ", False),
+    ],
+)
+def test_raa_tafkheem_at_stop(emb, sura, ayah, word, tafkheem):
+    """Stopped rāʾ follows the vowel before it (skipping sākin/madd letters)."""
+    out = emb.text_to_embedding(sura, ayah, word)
+    last = len(out) - 1
+    var = out.stop_variants.get(last, out[last])
+    assert bool(var[emb.idx_sifat_start + 3]) is tafkheem
+
+
+def test_raa_after_hamzat_wasl_is_heavy(emb):
+    """ٱرْجِعِىٓ (89:28): kasra of hamzat waṣl is ʿāriḍah → tafkhīm."""
+    out = emb.text_to_embedding(89, 28, "ٱرْجِعِىٓ")
+    assert out[1][emb.idx_sifat_start + 3] == 1.0
+
+
+@pytest.mark.parametrize(
+    "sura,ayah,word",
+    [(5, 29, "تَبُوٓأَ"), (28, 76, "لَتَنُوٓأُ"), (30, 10, "ٱلسُّوٓأَىٰٓ")],
+)
+def test_same_word_hamza_is_muttasil(emb, sura, ayah, word):
+    """A written madd letter before hamza in the same word is muttaṣil."""
+    out = emb.text_to_embedding(sura, ayah)
+    hits = [
+        i
+        for (first, last) in out.words
+        for i in range(first, last)
+        if _letter(emb, out[i]) == "و" and _letter(emb, out[i + 1]) == "أ"
+    ]
+    assert len(hits) == 1, word
+    rules = _rules(emb, out[hits[0]])
+    assert "madd_muttasil" in rules
+    assert "madd_munfasil" not in rules
+
+
+def test_vocative_dagger_alif_stays_munfasil(emb):
+    """يَٰٓأَيُّهَا (2:21): munfaṣil ḥukmī on the dagger alif is kept."""
+    out = emb.text_to_embedding(2, 21, "يَٰٓأَيُّهَا")
+    rules = set().union(*(_rules(emb, v) for v in out))
+    assert "madd_munfasil" in rules
+    assert "madd_muttasil" not in rules
+
+
+def test_yasri_tarqeeq_at_stop(emb):
+    """يَسْرِ (89:4): stopped rāʾ is read with tarqīq for the deleted yāʾ."""
+    out = emb.text_to_embedding(89, 4, "يَسْرِ")
+    last = len(out) - 1
+    var = out.stop_variants[last]
+    assert _haraka(emb, var) == "sukun"
+    assert var[emb.idx_sifat_start + 3] == 0.0

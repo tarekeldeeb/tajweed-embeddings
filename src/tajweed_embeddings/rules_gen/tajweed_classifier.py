@@ -582,6 +582,18 @@ def label_ayah(params):
             cleaned.append(ann)
         annotations = cleaned
 
+    # A written madd letter followed by hamza in the same word is muttaṣil
+    # (تَبُوٓأَ, لَتَنُوٓأُ, ٱلسُّوٓأَىٰٓ). The dagger alif of the vocative/tanbīh
+    # (يَٰٓأَيُّهَا, هَٰٓأَنتُمْ) stays munfaṣil ḥukmī.
+    for ann in annotations:
+        if ann["rule"] != "madd_munfasil" or text[ann["start"]] == "ٰ":
+            continue
+        j = ann["end"]
+        while j < len(text) and unicodedata.category(text[j]) == "Mn" and text[j] != "ٰ":
+            j += 1
+        if j < len(text) and text[j] in "ءأإؤئ":
+            ann["rule"] = "madd_muttasil"
+
     # Enforce madd priority: strongest kept, weaker removed when spans overlap exactly.
     madd_priority = {
         "madd_6": 0,

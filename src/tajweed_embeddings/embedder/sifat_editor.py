@@ -11,7 +11,7 @@ from .harakat_embedder import HarakatEmbedder
 class SifatEditor:
     """Apply context-dependent edits to encoded sifat vectors."""
 
-    _ISTI_LA_BIT = 3
+    ISTI_LA_BIT = 3
 
     def __init__(self, haraka_helper: HarakatEmbedder, isti_la_letters: Set[str]):
         self.haraka_helper = haraka_helper
@@ -25,13 +25,14 @@ class SifatEditor:
         n_harakat: int,
         idx_sifat_start: int,
         word_last_indices: Set[int],
-        stop_indices: Set[int],
+        wasl_embeddings: Optional[Sequence[np.ndarray]] = None,
     ) -> None:
         """
         Mutate sifat slices in-place based on contextual rules.
 
-        ``stop_indices`` are word-final letters the reciter stops on (waqf);
-        pass an empty set for continuous (waṣl) recitation.
+        ``wasl_embeddings`` (stop variants only) are the same letters as
+        pronounced in waṣl; the vowel a stopped rāʾ carries in waṣl breaks the
+        tie in مِصْر / ٱلْقِطْر.
         """
         if not embeddings:
             return
@@ -53,7 +54,7 @@ class SifatEditor:
             return base in ("sukun", "sukun_zero")
 
         def set_isti_la(idx: int, enabled: bool) -> None:
-            embeddings[idx][idx_sifat_start + self._ISTI_LA_BIT] = 1.0 if enabled else 0.0
+            embeddings[idx][idx_sifat_start + self.ISTI_LA_BIT] = 1.0 if enabled else 0.0
 
         def prev_haraka_value(start_idx: int) -> Optional[str]:
             for j in range(start_idx, -1, -1):
@@ -66,6 +67,16 @@ class SifatEditor:
                     "kasra",
                     "kasratan",
                 ):
+                    return base
+            return None
+
+        def word_vowel_before(start_idx: int) -> Optional[str]:
+            """Nearest short vowel at or before start_idx, within the word."""
+            for j in range(start_idx, -1, -1):
+                if j in word_last_indices:
+                    return None
+                base, _ = haraka_at(j)
+                if is_fatha(base) or is_damma(base) or is_kasra(base):
                     return base
             return None
 
@@ -102,26 +113,38 @@ class SifatEditor:
                 set_isti_la(i, True)
                 continue
 
-            if prev_letter == "ي" and is_sukun(prev_base):
-                    set_isti_la(i, False)
-                    continue
-
-            next_in_word = None
-            if i not in word_last_indices:
-                next_in_word = i + 1
-
             if is_kasra(prev_base):
-                if next_in_word is not None:
-                    next_letter = letters[next_in_word]
-                    next_base, _ = haraka_at(next_in_word)
+                # Tarqīq (فِرْعَوْن, مُّنْهَمِرٍ at stop), except before an
+                # isti'lāʾ letter in the same word (قِرْطَاسٍ, مِرْصَادًا).
+                if i not in word_last_indices:
+                    next_letter = letters[i + 1]
+                    next_base, _ = haraka_at(i + 1)
                     if next_letter in self.isti_la_letters and not is_kasra(next_base):
                         set_isti_la(i, True)
                         continue
-                if i in stop_indices:
-                    set_isti_la(i, True)
-                    continue
                 set_isti_la(i, False)
                 continue
 
-            # Default: keep existing istifal unless a stronger rule matched.
-            set_isti_la(i, False)
+            # Hamzat waṣl before the rāʾ: its kasra is ʿāriḍah (ٱرْجِعِىٓ).
+            if prev_letter == "ٱ":
+                set_isti_la(i, True)
+                continue
+
+            # The previous letter has no vowel of its own (sākin or a madd
+            # letter), which only happens at a stop. After ي: tarqīq (خَيْرٌ,
+            # قَدِيرٌ); otherwise follow the nearest vowel before it
+            # (غَفُورٌ, ٱلنَّارِ, ٱلْقَدْرِ → tafkhīm; ٱلذِّكْرِ → tarqīq).
+            if prev_letter == "ي":
+                set_isti_la(i, False)
+                continue
+            vowel = word_vowel_before(i - 2)
+            if is_kasra(vowel) and prev_letter in self.isti_la_letters:
+                # مِصْرَ → tafkhīm, ٱلْقِطْرِ → tarqīq: follow the waṣl vowel.
+                wasl_base = None
+                if wasl_embeddings is not None:
+                    wasl_base, _ = self.haraka_helper.decode_haraka(
+                        wasl_embeddings[i][idx_haraka_start : idx_haraka_start + n_harakat]
+                    )
+                set_isti_la(i, not is_kasra(wasl_base))
+                continue
+            set_isti_la(i, is_fatha(vowel) or is_damma(vowel))

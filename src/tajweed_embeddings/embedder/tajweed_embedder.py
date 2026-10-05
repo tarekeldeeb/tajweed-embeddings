@@ -34,8 +34,9 @@ class TajweedEmbedder:
 
     # Bump whenever rules_gen output changes so stale generated rule files
     # are rebuilt. "wasl-1": spans labeled in continuous recitation across
-    # āyah boundaries (no stop forced at āyah ends).
-    RULES_DATA_VERSION = "wasl-1"
+    # āyah boundaries (no stop forced at āyah ends). "wasl-2": silent tanwīn
+    # seats, trigger-letter filters, muttaṣil relabeling.
+    RULES_DATA_VERSION = "wasl-2"
 
     # ------------------------------------------------------------------
     # CONSTRUCTOR & DATA LOADING
@@ -680,7 +681,6 @@ class TajweedEmbedder:
                 self.n_harakat,
                 self.idx_sifat_start,
                 word_last_indices,
-                set(),  # primary vectors are waṣl; stops live in stop_variants
             )
 
             pause_slice = slice(
