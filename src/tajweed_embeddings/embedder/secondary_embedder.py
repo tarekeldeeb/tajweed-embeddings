@@ -27,7 +27,8 @@ Stop (waqf) rules implemented:
 Start (ibtidāʾ) rules implemented:
   1. Hamzat waṣl vocalization — ٱ → pronounced hamza (أ) with fatha for the
      definite article, otherwise kasra, or damma when the third letter carries
-     a permanent damma (with the classical exception lists). A following sākin
+     a permanent damma (with the classical exception lists; a doubled second
+     letter is itself the third letter, as in ٱتَّقُوا). A following sākin
      hamza is replaced by the matching madd letter (ibdāl, e.g. ٱئْتُوا → إيتوا).
   2. Cross-word assimilation undo — rule flags from spans that began in the
      previous word are cleared, and the written idghām shadda on the first
@@ -74,7 +75,8 @@ class SecondaryPhonemeEmbedder:
     # Hamzat waṣl: classical samāʿī nouns start with kasra despite letter shape.
     WASL_KASRA_NOUN_PREFIXES = ("ٱسم", "ٱبن", "ٱمرؤ", "ٱمرأ", "ٱثن", "ٱيم")
     # Verbs whose third-letter damma is ʿāriḍah (temporary) → start with kasra.
-    WASL_DAMMA_EXCEPTIONS = {"ٱمشوا", "ٱبنوا", "ٱقضوا", "ٱئتوا"}
+    # Matched as stems so suffixed forms are covered too (ٱئْتُونِى).
+    WASL_DAMMA_EXCEPTIONS = ("ٱمشو", "ٱبنو", "ٱقضو", "ٱئتو")
     # iftaʿala verbs that begin with ٱل but are not the definite article.
     WASL_LAM_VERB_PREFIXES = ("ٱلتق", "ٱلتم")
     # Stopped rāʾ read with tarqīq for the deleted yāʾ (وَٱلَّيْلِ إِذَا يَسْرِ,
@@ -470,7 +472,7 @@ class SecondaryPhonemeEmbedder:
         skeleton = "".join(letters[i] for i in idxs)
         if skeleton.startswith(self.WASL_KASRA_NOUN_PREFIXES):
             return "kasra"
-        if skeleton in self.WASL_DAMMA_EXCEPTIONS:
+        if skeleton.startswith(self.WASL_DAMMA_EXCEPTIONS):
             return "kasra"
         if (
             len(idxs) >= 2
@@ -478,6 +480,12 @@ class SecondaryPhonemeEmbedder:
             and not skeleton.startswith(self.WASL_LAM_VERB_PREFIXES)
         ):
             return "fatha"
+        if len(idxs) >= 2:
+            # A doubled second letter (ٱتَّقُوا) is itself the third letter:
+            # its second half carries the shadda's vowel.
+            second_state = self._haraka_state(embeddings[idxs[1]])
+            if second_state and second_state.endswith("_shadda"):
+                return "damma" if second_state == "damma_shadda" else "kasra"
         if len(idxs) >= 3:
             third_state = self._haraka_state(embeddings[idxs[2]])
             if third_state in ("damma", "damma_shadda", "dammatan"):

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tajweed-embeddings"
-version = "2.1.0"
+version = "2.1.1"
 description = "A Python library for generating detailed numerical embeddings of Quranic text. This tool analyzes Arabic script to identify and encode Tajweed (pronunciation) rules, such as Madd, Ghunnah, and Qalqalah. It produces vector representations that capture not just the letters and vowels, but also the intricate rules of recitation, making it suitable for machine learning applications in Quranic studies, recitation analysis, and text-to-speech systems."
 authors = [{ name="Tarek Eldeeb" }]
 requires-python = ">=3.10"

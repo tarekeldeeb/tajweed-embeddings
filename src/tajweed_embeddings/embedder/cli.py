@@ -82,7 +82,7 @@ def main() -> None:
             "║ │  │   │    │   ┌ Jahr 🔊 , Hams 🤫                      ║\n"
             "║ │  │   │    │   │  ┌ Rikhw 💨 , Tawasot ➖ , Shidda 🚫   ║\n"
             "║ │  │   │    │   │  │  ┌ Isti'la 🔼 , Istifal 🔻          ║\n"
-            "║ │  │   │    │   │  │  │  ┌ Infitah ▲ , Itbaq ⟂           ║\n"
+            "║ │  │   │    │   │  │  │  ┌ Infitah ⟂ , Itbaq ▲           ║\n"
             "║ │  │   │    │   │  │  │  │  ┌ Idhlaq 😮 , Ismat 😐       ║\n"
             "║ │  │   │    │   │  │  │  │  │    ┌ Rules: Tajweed flags  ║\n"
             "║ │  │   │    │   │  │  │  │  │    │                       ║\n"

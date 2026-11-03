@@ -102,7 +102,7 @@ letter/rule alignment outranks new features.
 ### P1 — Benchmarks & docs (S + M)
 - pytest-benchmark job: full-corpus embed time, secondary-variant overhead, peak memory
   (`_embed_segment` is pure-Python per-char loops — establish a baseline before optimizing).
-- mkdocs-material site: embedding layout spec (the dim-90 table from README), rule glossary
+- mkdocs-material site: embedding layout spec (the embedding-layout table from README), rule glossary
   with Arabic terms, secondary-phoneme semantics, API reference; 1–2 example notebooks.
 
 ---

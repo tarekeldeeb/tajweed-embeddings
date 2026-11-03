@@ -1,6 +1,26 @@
 """Basic CLI argument wiring tests."""
 
-from tajweed_embeddings.embedder.cli import parse_args
+import sys
+
+from tajweed_embeddings.embedder.cli import main, parse_args
+from tajweed_embeddings.embedder.sifat_embedder import SifatEmbedder
+
+
+def test_banner_sifat_symbols_match_rows(monkeypatch, capsys):
+    """The banner legend uses the same ṣifāt symbols as the rendered rows."""
+    labels = SifatEmbedder().short_label_map
+    istila = labels["isti'la"]
+    monkeypatch.setattr(sys, "argv", ["tajweed-embeddings", "--sura", "1", "--aya", "1"])
+    main()
+    out = capsys.readouterr().out
+    for legend in (
+        f"Jahr {labels['jahr']} , Hams {labels['hams']}",
+        f"Rikhw {labels['rikhwah']} , Tawasot {labels['tawassut']} , Shidda {labels['shiddah']}",
+        f"Isti'la {istila} , Istifal {labels['istifal']}",
+        f"Infitah {labels['infitah']} , Itbaq {labels['itbaq']}",
+        f"Idhlaq {labels['idhlaq']} , Ismat {labels['ismat']}",
+    ):
+        assert legend in out
 
 
 def test_cli_accepts_count_argument(monkeypatch):

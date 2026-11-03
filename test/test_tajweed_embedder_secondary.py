@@ -151,6 +151,27 @@ def test_hamzat_wasl_damma_exception(emb):
     assert "madd_2" in _rules(emb, ibdal)
 
 
+def test_hamzat_wasl_damma_exception_with_suffix(emb):
+    """ٱئْتُونِى (46:4) keeps the ʿāriḍah-damma exception: kasra, ibdāl ئ → ي."""
+    out = emb.text_to_embedding(46, 4, "ٱئْتُونِى")
+    assert _haraka(emb, out.start_variants[0]) == "kasra"
+    ibdal = out.start_variants[1]
+    assert _letter(emb, ibdal) == "ي"
+    assert "madd_2" in _rules(emb, ibdal)
+
+
+def test_hamzat_wasl_doubled_second_letter_fatha(emb):
+    """ٱتَّقُوا۟ (2:278) starts with kasra: the doubled ت carries the third-letter fatha."""
+    out = emb.text_to_embedding(2, 278, "ٱتَّقُوا۟")
+    assert _haraka(emb, out.start_variants[0]) == "kasra"
+
+
+def test_hamzat_wasl_doubled_second_letter_damma(emb):
+    """Passive ٱتُّبِعُوا۟ (2:166) starts with damma from the doubled ت."""
+    out = emb.text_to_embedding(2, 166, "ٱتُّبِعُوا۟")
+    assert _haraka(emb, out.start_variants[0]) == "damma"
+
+
 def test_hamzat_wasl_samai_noun_kasra(emb):
     """ٱسْمُ starts with kasra despite the damma on its third letter."""
     out = emb.text_to_embedding(1, 1, "ٱسْمُ")
